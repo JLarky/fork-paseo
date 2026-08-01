@@ -8,6 +8,8 @@ export function SayToMeInlineWidget(_: {
     readonly workingDirectory?: string | null;
     readonly branchName?: string | null;
   };
+  onOpenSession?: (sessionId: string) => void;
+  onParkSession?: (sessionId: string) => void;
 }) {
   return null;
 }

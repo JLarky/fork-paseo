@@ -8,6 +8,8 @@ describe("Paseo voice widget adapter", () => {
         sessionId: "pa_9c4b3da4-2bfa-4aae-ac85-4932cabfc859",
         apiBaseUrl: "http://127.0.0.1:6768",
         canAutoplay: false,
+        uiBaseUrl: "http://localhost:8081",
+        timersBaseUrl: "http://127.0.0.1:6768/api/say-to-me/timers",
       }),
     ).toEqual({
       "session-id": "pa_9c4b3da4-2bfa-4aae-ac85-4932cabfc859",
@@ -15,6 +17,8 @@ describe("Paseo voice widget adapter", () => {
       "can-autoplay": "0",
       "storage-key": PASEO_VOICE_WIDGET_STORAGE_KEY,
       layout: "inline",
+      "ui-base-url": "http://localhost:8081",
+      "timers-base-url": "http://127.0.0.1:6768/api/say-to-me/timers",
     });
   });
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { handleVoiceWidgetEvent } from "./voice-widget-events";
+import {
+  handleVoiceWidgetEvent,
+  VOICE_WIDGET_OPEN_SESSION_EVENT,
+  VOICE_WIDGET_PARK_SESSION_EVENT,
+} from "./voice-widget-events";
 
 function widgetEvent(detail: Record<string, unknown>): Event {
   const eventName = {
@@ -33,7 +37,9 @@ describe("Say To Me voice widget events", () => {
       handlers,
     );
     handleVoiceWidgetEvent(
-      widgetEvent({ source: "other", version: 1, type: "collapse-change", collapsed: false }),
+      new CustomEvent("say-to-me-collapse-change", {
+        detail: { source: "other", version: 1, type: "collapse-change", collapsed: false },
+      }),
       handlers,
     );
 
@@ -101,5 +107,45 @@ describe("Say To Me voice widget events", () => {
       "permission:not-allowed:7",
       "playback:null",
     ]);
+  });
+
+  it("routes the allowed open and park events when they include a session id", () => {
+    const opened: string[] = [];
+    const parked: string[] = [];
+    const handlers = {
+      onInsertUsagePrompt: () => undefined,
+      onCollapseChange: () => undefined,
+      onError: () => undefined,
+      onPermissionIssue: () => undefined,
+      onPlaybackChange: () => undefined,
+      onOpenSession: (sessionId: string) => opened.push(sessionId),
+      onParkSession: (sessionId: string) => parked.push(sessionId),
+    };
+
+    handleVoiceWidgetEvent(
+      new CustomEvent(VOICE_WIDGET_OPEN_SESSION_EVENT, {
+        detail: {
+          source: "say-to-me-widget",
+          version: 1,
+          type: "open-session",
+          sessionId: "pa_current",
+        },
+      }),
+      handlers,
+    );
+    handleVoiceWidgetEvent(
+      new CustomEvent(VOICE_WIDGET_PARK_SESSION_EVENT, {
+        detail: {
+          source: "say-to-me-widget",
+          version: 1,
+          type: "park-session",
+          sessionId: "pa_current",
+        },
+      }),
+      handlers,
+    );
+
+    expect(opened).toEqual(["pa_current"]);
+    expect(parked).toEqual(["pa_current"]);
   });
 });

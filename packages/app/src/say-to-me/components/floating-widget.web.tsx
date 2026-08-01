@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSettings } from "@/hooks/use-settings";
 import { useHostRuntimeSnapshot, useHosts, type ActiveConnection } from "@/runtime/host-runtime";
 import type { HostProfile } from "@/types/host-connection";
 import { paseoVoiceSessionId } from "@/say-to-me/voice-session-id";
@@ -17,6 +18,8 @@ import {
   VOICE_WIDGET_PERMISSION_EVENT,
   VOICE_WIDGET_PLAYBACK_EVENT,
   VOICE_WIDGET_USAGE_PROMPT_EVENT,
+  VOICE_WIDGET_OPEN_SESSION_EVENT,
+  VOICE_WIDGET_PARK_SESSION_EVENT,
 } from "@/say-to-me/voice-widget-events";
 import { buildVoiceWidgetAttributes } from "@/say-to-me/voice-widget-adapter";
 import { ensurePaseoVoiceWidgetThemeStylesheet } from "@/say-to-me/voice-widget-theme";
@@ -39,6 +42,15 @@ function isLocalhost(): boolean {
   return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 }
 
+function resolveWidgetThemeName(
+  appearanceTheme: string,
+  colorScheme: "dark" | "light" | null | undefined,
+): "dark" | "light" {
+  if (appearanceTheme === "light") return "light";
+  if (appearanceTheme === "auto") return colorScheme === "dark" ? "dark" : "light";
+  return "dark";
+}
+
 function requireVoiceWidgetElement(): HTMLElement {
   const element = document.createElement("say-to-me-voice-widget");
   return element;
@@ -49,6 +61,8 @@ export function SayToMeInlineWidget({
   agentId,
   onInsertUsagePrompt,
   context,
+  onOpenSession,
+  onParkSession,
 }: {
   serverId: string;
   agentId: string;
@@ -59,13 +73,16 @@ export function SayToMeInlineWidget({
     readonly workingDirectory?: string | null;
     readonly branchName?: string | null;
   };
+  onOpenSession?: (sessionId: string) => void;
+  onParkSession?: (sessionId: string) => void;
 }) {
   const runtime = useHostRuntimeSnapshot(serverId);
   const host = useHosts().find((entry) => entry.serverId === serverId);
   const apiBaseUrl = daemonApiBaseUrl(runtime?.activeConnection, host);
   const sessionId = useMemo(() => paseoVoiceSessionId(agentId), [agentId]);
   const colorScheme = useColorScheme();
-  const themeName = colorScheme === "dark" ? "dark" : "light";
+  const appearanceTheme = useSettings((settings) => settings.theme);
+  const themeName = resolveWidgetThemeName(appearanceTheme, colorScheme);
   const [error, setError] = useState<string | null>(null);
   const [permissionIssue, setPermissionIssue] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -94,6 +111,8 @@ export function SayToMeInlineWidget({
           sessionId,
           apiBaseUrl,
           canAutoplay: false,
+          uiBaseUrl: window.location.origin,
+          timersBaseUrl: `${apiBaseUrl}/api/say-to-me/timers`,
           context,
         });
         for (const [name, value] of Object.entries(attributes)) {
@@ -104,6 +123,8 @@ export function SayToMeInlineWidget({
         element.addEventListener(VOICE_WIDGET_USAGE_PROMPT_EVENT, onWidgetEvent);
         element.addEventListener(VOICE_WIDGET_PERMISSION_EVENT, onWidgetEvent);
         element.addEventListener(VOICE_WIDGET_PLAYBACK_EVENT, onWidgetEvent);
+        element.addEventListener(VOICE_WIDGET_OPEN_SESSION_EVENT, onWidgetEvent);
+        element.addEventListener(VOICE_WIDGET_PARK_SESSION_EVENT, onWidgetEvent);
         mountElement.append(element);
       } catch (cause) {
         if (!disposed) {
@@ -121,6 +142,8 @@ export function SayToMeInlineWidget({
         onError: setError,
         onPermissionIssue: (reason, noteId) => setPermissionIssue(`${reason} (${noteId})`),
         onPlaybackChange: setPlayingId,
+        onOpenSession,
+        onParkSession,
       });
     }
 
@@ -133,10 +156,22 @@ export function SayToMeInlineWidget({
         element.removeEventListener(VOICE_WIDGET_USAGE_PROMPT_EVENT, onWidgetEvent);
         element.removeEventListener(VOICE_WIDGET_PERMISSION_EVENT, onWidgetEvent);
         element.removeEventListener(VOICE_WIDGET_PLAYBACK_EVENT, onWidgetEvent);
+        element.removeEventListener(VOICE_WIDGET_OPEN_SESSION_EVENT, onWidgetEvent);
+        element.removeEventListener(VOICE_WIDGET_PARK_SESSION_EVENT, onWidgetEvent);
         element.remove();
       }
     };
-  }, [agentId, apiBaseUrl, context, onInsertUsagePrompt, serverId, sessionId, themeName]);
+  }, [
+    agentId,
+    apiBaseUrl,
+    context,
+    onInsertUsagePrompt,
+    onOpenSession,
+    onParkSession,
+    serverId,
+    sessionId,
+    themeName,
+  ]);
 
   if (!sessionId || !apiBaseUrl) return null;
   return (

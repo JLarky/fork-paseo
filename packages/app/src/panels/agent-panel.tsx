@@ -92,6 +92,7 @@ import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { buildDraftAgentSetup, type ClientSlashCommand } from "@/client-slash-commands";
 import { SayToMeInlineWidget } from "@/say-to-me/components/floating-widget";
+import { paseoVoiceSessionId } from "@/say-to-me/voice-session-id";
 
 interface ChatAgentStateShape {
   serverId: string | null;
@@ -760,7 +761,7 @@ function ChatAgentContent({
   const { t } = useTranslation();
   const isPaneVisible = useRetainedPanelActive();
   const { api: toastApi, toast: toastState, dismiss: dismissToast } = useToastHost();
-  const { isArchivingAgent } = useArchiveAgent();
+  const { archiveAgent, isArchivingAgent } = useArchiveAgent();
   const streamViewRef = useRef<AgentStreamViewHandle>(null);
   const clearOnAgentBlurRef = useRef<() => void>(() => {});
   const wasPaneFocusedRef = useRef(isPaneFocused);
@@ -787,6 +788,21 @@ function ChatAgentContent({
       );
     },
     (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b),
+  );
+  const handleVoiceWidgetOpenSession = useCallback(
+    (sessionId: string) => {
+      if (agentId && sessionId === paseoVoiceSessionId(agentId)) {
+        navigateToAgent({ serverId, agentId });
+      }
+    },
+    [agentId, serverId],
+  );
+  const handleVoiceWidgetParkSession = useCallback(
+    (sessionId: string) => {
+      if (!agentId || sessionId !== paseoVoiceSessionId(agentId)) return;
+      void archiveAgent({ serverId, agentId });
+    },
+    [agentId, archiveAgent, serverId],
   );
   const isInitializingFromMap = useSessionStore((state) =>
     agentId ? (state.sessions[serverId]?.initializingAgents?.get(agentId) ?? false) : false,
@@ -1091,6 +1107,8 @@ function ChatAgentContent({
       isArchivingCurrentAgent={isArchivingCurrentAgent}
       agentState={agentState}
       projectPlacement={projectPlacement}
+      onVoiceWidgetOpenSession={handleVoiceWidgetOpenSession}
+      onVoiceWidgetParkSession={handleVoiceWidgetParkSession}
       effectiveAgent={effectiveAgent}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
@@ -1118,6 +1136,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent,
   agentState,
   projectPlacement,
+  onVoiceWidgetOpenSession,
+  onVoiceWidgetParkSession,
   effectiveAgent,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
@@ -1141,6 +1161,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent: boolean;
   agentState: ChatAgentSelectedState;
   projectPlacement: Agent["projectPlacement"] | null;
+  onVoiceWidgetOpenSession: (sessionId: string) => void;
+  onVoiceWidgetParkSession: (sessionId: string) => void;
   effectiveAgent: AgentScreenAgent;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
@@ -1250,6 +1272,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         agentId={agentId}
         onInsertUsagePrompt={setText}
         context={voiceWidgetContext}
+        onOpenSession={onVoiceWidgetOpenSession}
+        onParkSession={onVoiceWidgetParkSession}
       />
       {streamContent}
     </View>
