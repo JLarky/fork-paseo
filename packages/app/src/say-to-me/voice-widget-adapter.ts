@@ -5,17 +5,40 @@ export interface VoiceWidgetAttributes {
   readonly "notes-base-url": string;
   readonly "can-autoplay": "0" | "1";
   readonly "storage-key": string;
+  readonly layout: "inline";
+  "session-title"?: string;
+  "project-name"?: string;
+  "working-directory"?: string;
+  "branch-name"?: string;
 }
 
 export function buildVoiceWidgetAttributes(input: {
   readonly sessionId: string;
   readonly apiBaseUrl: string;
   readonly canAutoplay: boolean;
+  readonly context?: {
+    readonly sessionTitle?: string | null;
+    readonly projectName?: string | null;
+    readonly workingDirectory?: string | null;
+    readonly branchName?: string | null;
+  };
 }): VoiceWidgetAttributes {
-  return {
+  const attributes: VoiceWidgetAttributes = {
     "session-id": input.sessionId,
     "notes-base-url": `${input.apiBaseUrl}/api/voice-notes`,
     "can-autoplay": input.canAutoplay ? "1" : "0",
     "storage-key": PASEO_VOICE_WIDGET_STORAGE_KEY,
+    layout: "inline",
   };
+  const contextAttributes = [
+    ["session-title", input.context?.sessionTitle],
+    ["project-name", input.context?.projectName],
+    ["working-directory", input.context?.workingDirectory],
+    ["branch-name", input.context?.branchName],
+  ] as const;
+  for (const [name, value] of contextAttributes) {
+    const trimmed = value?.trim();
+    if (trimmed) attributes[name] = trimmed;
+  }
+  return attributes;
 }

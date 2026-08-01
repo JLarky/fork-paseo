@@ -96,6 +96,7 @@ import { SayToMeInlineWidget } from "@/say-to-me/components/floating-widget";
 interface ChatAgentStateShape {
   serverId: string | null;
   id: string | null;
+  title: string | null;
   provider?: Agent["provider"];
   status: Agent["status"] | null;
   cwd: string | null;
@@ -128,6 +129,7 @@ function resolveChatAgentFromSession(
 const EMPTY_CHAT_AGENT_STATE: ChatAgentSelectedState = {
   serverId: null,
   id: null,
+  title: null,
   status: null,
   cwd: null,
   lastError: null,
@@ -146,6 +148,7 @@ function selectChatAgentState(
   return {
     serverId: agent.serverId,
     id: agent.id,
+    title: agent.title,
     provider: agent.provider,
     status: agent.status,
     cwd: agent.cwd,
@@ -1087,6 +1090,7 @@ function ChatAgentContent({
       isPaneFocused={isPaneFocused}
       isArchivingCurrentAgent={isArchivingCurrentAgent}
       agentState={agentState}
+      projectPlacement={projectPlacement}
       effectiveAgent={effectiveAgent}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
@@ -1113,6 +1117,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isPaneFocused,
   isArchivingCurrentAgent,
   agentState,
+  projectPlacement,
   effectiveAgent,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
@@ -1135,6 +1140,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isPaneFocused: boolean;
   isArchivingCurrentAgent: boolean;
   agentState: ChatAgentSelectedState;
+  projectPlacement: Agent["projectPlacement"] | null;
   effectiveAgent: AgentScreenAgent;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
@@ -1228,9 +1234,23 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
+  const voiceWidgetContext = useMemo(
+    () => ({
+      sessionTitle: agentState.title,
+      projectName: projectPlacement?.projectName,
+      workingDirectory: projectPlacement?.checkout.cwd ?? cwd,
+      branchName: projectPlacement?.checkout.currentBranch,
+    }),
+    [agentState.title, cwd, projectPlacement],
+  );
   const contentContainer = (
     <View style={styles.contentContainer}>
-      <SayToMeInlineWidget serverId={serverId} agentId={agentId} onInsertUsagePrompt={setText} />
+      <SayToMeInlineWidget
+        serverId={serverId}
+        agentId={agentId}
+        onInsertUsagePrompt={setText}
+        context={voiceWidgetContext}
+      />
       {streamContent}
     </View>
   );

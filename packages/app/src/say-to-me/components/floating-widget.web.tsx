@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useHostRuntimeSnapshot, useHosts, type ActiveConnection } from "@/runtime/host-runtime";
 import type { HostProfile } from "@/types/host-connection";
 import { paseoVoiceSessionId } from "@/say-to-me/voice-session-id";
@@ -18,6 +19,7 @@ import {
   VOICE_WIDGET_USAGE_PROMPT_EVENT,
 } from "@/say-to-me/voice-widget-events";
 import { buildVoiceWidgetAttributes } from "@/say-to-me/voice-widget-adapter";
+import { ensurePaseoVoiceWidgetThemeStylesheet } from "@/say-to-me/voice-widget-theme";
 
 function daemonApiBaseUrl(
   activeConnection: ActiveConnection | null | undefined,
@@ -46,15 +48,24 @@ export function SayToMeInlineWidget({
   serverId,
   agentId,
   onInsertUsagePrompt,
+  context,
 }: {
   serverId: string;
   agentId: string;
   onInsertUsagePrompt: (prompt: string) => void;
+  context?: {
+    readonly sessionTitle?: string | null;
+    readonly projectName?: string | null;
+    readonly workingDirectory?: string | null;
+    readonly branchName?: string | null;
+  };
 }) {
   const runtime = useHostRuntimeSnapshot(serverId);
   const host = useHosts().find((entry) => entry.serverId === serverId);
   const apiBaseUrl = daemonApiBaseUrl(runtime?.activeConnection, host);
   const sessionId = useMemo(() => paseoVoiceSessionId(agentId), [agentId]);
+  const colorScheme = useColorScheme();
+  const themeName = colorScheme === "dark" ? "dark" : "light";
   const [error, setError] = useState<string | null>(null);
   const [permissionIssue, setPermissionIssue] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -75,10 +86,15 @@ export function SayToMeInlineWidget({
         await customElements.whenDefined("say-to-me-voice-widget");
         if (disposed) return;
         element = requireVoiceWidgetElement();
+        ensurePaseoVoiceWidgetThemeStylesheet();
+        const mountElement = document.getElementById(`paseo-say-to-me-${serverId}-${agentId}`);
+        if (!mountElement) return;
+        mountElement.dataset.paseoSayToMeTheme = themeName;
         const attributes = buildVoiceWidgetAttributes({
           sessionId,
           apiBaseUrl,
           canAutoplay: false,
+          context,
         });
         for (const [name, value] of Object.entries(attributes)) {
           element.setAttribute(name, value);
@@ -88,7 +104,7 @@ export function SayToMeInlineWidget({
         element.addEventListener(VOICE_WIDGET_USAGE_PROMPT_EVENT, onWidgetEvent);
         element.addEventListener(VOICE_WIDGET_PERMISSION_EVENT, onWidgetEvent);
         element.addEventListener(VOICE_WIDGET_PLAYBACK_EVENT, onWidgetEvent);
-        document.getElementById(`paseo-say-to-me-${serverId}-${agentId}`)?.append(element);
+        mountElement.append(element);
       } catch (cause) {
         if (!disposed) {
           setError(
@@ -120,7 +136,7 @@ export function SayToMeInlineWidget({
         element.remove();
       }
     };
-  }, [agentId, apiBaseUrl, onInsertUsagePrompt, serverId, sessionId]);
+  }, [agentId, apiBaseUrl, context, onInsertUsagePrompt, serverId, sessionId, themeName]);
 
   if (!sessionId || !apiBaseUrl) return null;
   return (
