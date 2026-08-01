@@ -13,4 +13,24 @@ describe("Paseo voice widget theme", () => {
     expect(css).toContain("--stm-max-width: 100%");
     expect(css).toContain("--stm-focus-ring:");
   });
+
+  it("styles STM markdown semantics in normal and compact inline states", () => {
+    const css = buildPaseoVoiceWidgetThemeCss();
+    for (const selector of [
+      ".stm-md table",
+      ".stm-md code",
+      ".stm-md pre",
+      ".stm-md ul",
+      ".stm-md ol",
+      ".stm-md blockquote",
+      ".stm-md a",
+      ".stm-md-wrap--compact",
+      ".stm-md--compact",
+    ]) {
+      expect(css).toContain(`say-to-me-voice-widget ${selector}`);
+    }
+    expect(css).toContain("--stm-md-code-bg:");
+    expect(css).toContain("--stm-md-quote-border:");
+    expect(css).toContain("text-decoration: underline");
+  });
 });
