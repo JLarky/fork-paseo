@@ -91,6 +91,7 @@ import type { WorkspaceFileOpenRequest } from "@/workspace/file-open";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { buildDraftAgentSetup, type ClientSlashCommand } from "@/client-slash-commands";
+import { SayToMeInlineWidget } from "@/say-to-me/components/floating-widget";
 
 interface ChatAgentStateShape {
   serverId: string | null;
@@ -1227,7 +1228,12 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
-  const contentContainer = <View style={styles.contentContainer}>{streamContent}</View>;
+  const contentContainer = (
+    <View style={styles.contentContainer}>
+      <SayToMeInlineWidget serverId={serverId} agentId={agentId} onInsertUsagePrompt={setText} />
+      {streamContent}
+    </View>
+  );
 
   return (
     <RewindComposerRestoreProvider text={agentInputDraft.text} setText={agentInputDraft.setText}>
