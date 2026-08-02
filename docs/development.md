@@ -15,9 +15,8 @@ npm run dev:desktop
 
 Root checkout dev is intentionally split across terminals:
 
-- `npm run dev:server` runs the checkout daemon on `127.0.0.1:6768` when explicitly requested.
-- `npm run dev:app` runs Expo on `http://localhost:6770` and connects to the already-running daemon at `127.0.0.1:6767`.
-- The web app proxy owns 6770, forwards daemon HTTP/WebSocket traffic to 6767, and runs Metro internally on 6771 so the browser connection stays same-origin.
+- `npm run dev:server` runs the daemon on `127.0.0.1:6768`.
+- `npm run dev:app` runs Expo on `http://localhost:8081` and connects to the dev daemon.
 - `npm run dev:desktop` runs its own Electron-flavored Expo server on the first free port from `8082` through `8089`. It never claims port `8081`.
 
 `npm run dev` is only a shorthand for `npm run dev:server`. Keep `127.0.0.1:6767` for the packaged app and production-style `~/.paseo` state.
@@ -44,7 +43,7 @@ PASEO_DEV_RESET_HOME=1 npm run dev            # clear and reseed the derived wor
 
 - Stable daemon launched by the desktop app: `localhost:6767`.
 - Root checkout dev daemon: `localhost:6768`.
-- Root checkout Expo: `http://localhost:6770`.
+- Root checkout Expo: `http://localhost:8081`.
 - Root checkout desktop dev Expo: first free port from `8082` through `8089`.
 - `npm run dev` (Windows): `localhost:6767` for the daemon.
 
