@@ -7,11 +7,11 @@ export PATH="$ROOT_DIR/node_modules/.bin:$PATH"
 
 source "$SCRIPT_DIR/dev-home.sh"
 
-export PASEO_LISTEN="${PASEO_LISTEN:-127.0.0.1:6767}"
+export PASEO_LISTEN="${PASEO_LISTEN:-127.0.0.1:6768}"
 configure_dev_paseo_home
 
-EXPO_PORT="${EXPO_PORT:-6770}"
-DAEMON_ENDPOINT="${PASEO_DEV_DAEMON_ENDPOINT:-localhost:${EXPO_PORT}}"
+EXPO_PORT="${EXPO_PORT:-8081}"
+DAEMON_ENDPOINT="$(resolve_dev_daemon_endpoint)"
 
 echo "══════════════════════════════════════════════════════"
 echo "  Paseo App Dev"
@@ -25,7 +25,4 @@ exec cross-env \
   BROWSER="${BROWSER:-none}" \
   APP_VARIANT=development \
   EXPO_PUBLIC_LOCAL_DAEMON="$DAEMON_ENDPOINT" \
-  PASEO_DEV_DAEMON_HOST=127.0.0.1 \
-  PASEO_DEV_DAEMON_PORT=6767 \
-  PASEO_METRO_PORT="$((EXPO_PORT + 1))" \
-  node "$ROOT_DIR/scripts/dev-app-proxy.mjs"
+  npm run start:expo --workspace=@getpaseo/app -- --port "$EXPO_PORT"
