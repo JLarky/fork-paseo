@@ -103,6 +103,7 @@ import type { WorkspaceFileOpenRequest } from "@/workspace/file-open";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { buildDraftAgentSetup, type ClientSlashCommand } from "@/client-slash-commands";
+import { SayToMeWidgetHost } from "@/say-to-me/SayToMeWidgetHost";
 
 interface ChatAgentStateShape {
   serverId: string | null;
@@ -1293,7 +1294,17 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
-  const contentContainer = <View style={styles.contentContainer}>{streamContent}</View>;
+  const handleParkSession = useCallback(() => {
+    navigateToAgent({ serverId, agentId });
+  }, [agentId, serverId]);
+  const contentContainer = (
+    <View style={styles.contentContainer}>
+      <View style={styles.sayToMeWidgetRow}>
+        <SayToMeWidgetHost sessionId={`pa_${agentId}`} onParkSession={handleParkSession} />
+      </View>
+      {streamContent}
+    </View>
+  );
 
   return (
     <RewindComposerRestoreProvider text={agentInputDraft.text} setText={agentInputDraft.setText}>
@@ -1743,6 +1754,12 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     overflow: "hidden",
     ...(isWeb ? { userSelect: "none" as const } : {}),
+  },
+  sayToMeWidgetRow: {
+    minHeight: 32,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing[2],
   },
   historySyncOverlay: {
     position: "absolute",
