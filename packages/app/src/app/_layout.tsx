@@ -878,7 +878,7 @@ function RootStack() {
   return (
     <ThemedStack screenOptions={ROOT_STACK_SCREEN_OPTIONS}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="park" />
+      {isNative ? <Stack.Screen name="park" /> : null}
       <Stack.Protected guard={storeReady}>
         <Stack.Screen name="welcome" />
         <Stack.Screen name="settings/index" />

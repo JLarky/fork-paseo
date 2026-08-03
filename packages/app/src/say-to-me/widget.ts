@@ -138,7 +138,7 @@ export function buildParkSessionUrl(
   context: ParkSessionContext,
   origin = typeof window !== "undefined" ? window.location.origin : "http://localhost",
 ): URL {
-  const url = new URL("/park", origin);
+  const url = new URL("/park.html", origin);
   url.searchParams.set("environmentId", context.environmentId);
   url.searchParams.set("threadId", context.threadId);
   for (const [key, value] of [
