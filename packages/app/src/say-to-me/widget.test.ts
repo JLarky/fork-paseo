@@ -117,7 +117,7 @@ describe("Say To Me widget host adapter", () => {
     );
   });
 
-  it("builds the exact T3-compatible Park URL and omits blank optional fields", () => {
+  it("builds the exact static Park document URL and omits blank optional fields", () => {
     expect(
       buildParkSessionUrl(
         {
@@ -131,14 +131,14 @@ describe("Say To Me widget host adapter", () => {
         "https://paseo.example",
       ).toString(),
     ).toBe(
-      "https://paseo.example/park?environmentId=server+with+spaces&threadId=agent%2F1&title=Fix+parking&project=paseo&cwd=%2Fhome%2Fylapin%2Fwork%2Ffork-paseo&branch=feat%2Fstm-park",
+      "https://paseo.example/park.html?environmentId=server+with+spaces&threadId=agent%2F1&title=Fix+parking&project=paseo&cwd=%2Fhome%2Fylapin%2Fwork%2Ffork-paseo&branch=feat%2Fstm-park",
     );
     expect(
       buildParkSessionUrl(
         { environmentId: "server-1", threadId: "agent-1", title: " ", branch: "" },
         "https://paseo.example",
       ).toString(),
-    ).toBe("https://paseo.example/park?environmentId=server-1&threadId=agent-1");
+    ).toBe("https://paseo.example/park.html?environmentId=server-1&threadId=agent-1");
   });
 
   it("hard-navigates only for a valid nonblank matching Park event", () => {
@@ -156,7 +156,9 @@ describe("Say To Me widget host adapter", () => {
 
     expect(assignParkSessionFromEvent(validEvent, "pa_agent-1", context)).toBe(true);
     expect(assign).toHaveBeenCalledWith(
-      new URL("https://paseo.example/park?environmentId=server-1&threadId=agent-1&cwd=%2Frepo"),
+      new URL(
+        "https://paseo.example/park.html?environmentId=server-1&threadId=agent-1&cwd=%2Frepo",
+      ),
     );
 
     assign.mockClear();
