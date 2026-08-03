@@ -91,10 +91,13 @@ import type { WorkspaceFileOpenRequest } from "@/workspace/file-open";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { buildDraftAgentSetup, type ClientSlashCommand } from "@/client-slash-commands";
+import { SayToMeInlineWidget } from "@/say-to-me/components/floating-widget";
+import { paseoVoiceSessionId } from "@/say-to-me/voice-session-id";
 
 interface ChatAgentStateShape {
   serverId: string | null;
   id: string | null;
+  title: string | null;
   provider?: Agent["provider"];
   status: Agent["status"] | null;
   cwd: string | null;
@@ -127,6 +130,7 @@ function resolveChatAgentFromSession(
 const EMPTY_CHAT_AGENT_STATE: ChatAgentSelectedState = {
   serverId: null,
   id: null,
+  title: null,
   status: null,
   cwd: null,
   lastError: null,
@@ -145,6 +149,7 @@ function selectChatAgentState(
   return {
     serverId: agent.serverId,
     id: agent.id,
+    title: agent.title,
     provider: agent.provider,
     status: agent.status,
     cwd: agent.cwd,
@@ -756,7 +761,7 @@ function ChatAgentContent({
   const { t } = useTranslation();
   const isPaneVisible = useRetainedPanelActive();
   const { api: toastApi, toast: toastState, dismiss: dismissToast } = useToastHost();
-  const { isArchivingAgent } = useArchiveAgent();
+  const { archiveAgent, isArchivingAgent } = useArchiveAgent();
   const streamViewRef = useRef<AgentStreamViewHandle>(null);
   const clearOnAgentBlurRef = useRef<() => void>(() => {});
   const wasPaneFocusedRef = useRef(isPaneFocused);
@@ -783,6 +788,21 @@ function ChatAgentContent({
       );
     },
     (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b),
+  );
+  const handleVoiceWidgetOpenSession = useCallback(
+    (sessionId: string) => {
+      if (agentId && sessionId === paseoVoiceSessionId(agentId)) {
+        navigateToAgent({ serverId, agentId });
+      }
+    },
+    [agentId, serverId],
+  );
+  const handleVoiceWidgetParkSession = useCallback(
+    (sessionId: string) => {
+      if (!agentId || sessionId !== paseoVoiceSessionId(agentId)) return;
+      void archiveAgent({ serverId, agentId });
+    },
+    [agentId, archiveAgent, serverId],
   );
   const isInitializingFromMap = useSessionStore((state) =>
     agentId ? (state.sessions[serverId]?.initializingAgents?.get(agentId) ?? false) : false,
@@ -1086,6 +1106,9 @@ function ChatAgentContent({
       isPaneFocused={isPaneFocused}
       isArchivingCurrentAgent={isArchivingCurrentAgent}
       agentState={agentState}
+      projectPlacement={projectPlacement}
+      onVoiceWidgetOpenSession={handleVoiceWidgetOpenSession}
+      onVoiceWidgetParkSession={handleVoiceWidgetParkSession}
       effectiveAgent={effectiveAgent}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
@@ -1112,6 +1135,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isPaneFocused,
   isArchivingCurrentAgent,
   agentState,
+  projectPlacement,
+  onVoiceWidgetOpenSession,
+  onVoiceWidgetParkSession,
   effectiveAgent,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
@@ -1134,6 +1160,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isPaneFocused: boolean;
   isArchivingCurrentAgent: boolean;
   agentState: ChatAgentSelectedState;
+  projectPlacement: Agent["projectPlacement"] | null;
+  onVoiceWidgetOpenSession: (sessionId: string) => void;
+  onVoiceWidgetParkSession: (sessionId: string) => void;
   effectiveAgent: AgentScreenAgent;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
@@ -1227,7 +1256,28 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
-  const contentContainer = <View style={styles.contentContainer}>{streamContent}</View>;
+  const voiceWidgetContext = useMemo(
+    () => ({
+      sessionTitle: agentState.title,
+      projectName: projectPlacement?.projectName,
+      workingDirectory: projectPlacement?.checkout.cwd ?? cwd,
+      branchName: projectPlacement?.checkout.currentBranch,
+    }),
+    [agentState.title, cwd, projectPlacement],
+  );
+  const contentContainer = (
+    <View style={styles.contentContainer}>
+      <SayToMeInlineWidget
+        serverId={serverId}
+        agentId={agentId}
+        onInsertUsagePrompt={setText}
+        context={voiceWidgetContext}
+        onOpenSession={onVoiceWidgetOpenSession}
+        onParkSession={onVoiceWidgetParkSession}
+      />
+      {streamContent}
+    </View>
+  );
 
   return (
     <RewindComposerRestoreProvider text={agentInputDraft.text} setText={agentInputDraft.setText}>

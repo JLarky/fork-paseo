@@ -1,6 +1,8 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { resolve } = require("metro-resolver");
 const fs = require("fs");
+const http = require("http");
+const https = require("https");
 const path = require("path");
 
 const projectRoot = __dirname;
@@ -93,14 +95,56 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return resolveWithCustomWebOverlay(context, moduleName, platform);
 };
 
+function withSayToMeAttachmentProxy(metroMiddleware) {
+  const daemonBaseUrl = process.env.EXPO_PUBLIC_LOCAL_DAEMON?.trim();
+  if (!daemonBaseUrl) return metroMiddleware;
+  const upstreamBaseUrl = new URL(
+    daemonBaseUrl.includes("://") ? daemonBaseUrl : `http://${daemonBaseUrl}`,
+  );
+  const requestClient = upstreamBaseUrl.protocol === "https:" ? https : http;
+
+  return (req, res, next) => {
+    const match = req.url?.match(/^\/api\/message-attachments\/([0-9]+)$/);
+    if (!match) {
+      metroMiddleware(req, res, next);
+      return;
+    }
+    const upstreamRequest = requestClient.request(
+      new URL(`/api/message-attachments/${match[1]}`, upstreamBaseUrl),
+      { method: "GET" },
+      (upstreamResponse) => {
+        res.statusCode = upstreamResponse.statusCode ?? 502;
+        for (const header of ["cache-control", "content-disposition", "content-type", "etag"]) {
+          const value = upstreamResponse.headers[header];
+          if (typeof value === "string") res.setHeader(header, value);
+        }
+        upstreamResponse.pipe(res);
+      },
+    );
+    upstreamRequest.on("error", () => {
+      if (!res.headersSent) {
+        res.statusCode = 502;
+        res.end("Unable to load Say To Me attachment.");
+      }
+    });
+    upstreamRequest.end();
+  };
+}
+
+const originalEnhanceMiddleware = config.server?.enhanceMiddleware;
+config.server = config.server ?? {};
+config.server.enhanceMiddleware = (metroMiddleware, server) => {
+  const middleware = originalEnhanceMiddleware
+    ? originalEnhanceMiddleware(metroMiddleware, server)
+    : metroMiddleware;
+  return withSayToMeAttachmentProxy(middleware);
+};
+
 if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
   const { simMiddleware } = require("serve-sim/middleware");
-  const originalEnhanceMiddleware = config.server?.enhanceMiddleware;
-  config.server = config.server ?? {};
+  const previousEnhanceMiddleware = config.server.enhanceMiddleware;
   config.server.enhanceMiddleware = (metroMiddleware, server) => {
-    const middleware = originalEnhanceMiddleware
-      ? originalEnhanceMiddleware(metroMiddleware, server)
-      : metroMiddleware;
+    const middleware = previousEnhanceMiddleware(metroMiddleware, server);
     const serveSimulator = simMiddleware({
       basePath: "/.sim",
       device: process.env.PASEO_SERVE_SIM_DEVICE_UDID,

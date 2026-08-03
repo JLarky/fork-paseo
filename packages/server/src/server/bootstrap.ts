@@ -192,6 +192,10 @@ import {
   type DaemonAuthConfig,
 } from "./auth.js";
 import { createWebUiMiddleware } from "./web-ui.js";
+import { createSayToMeVoiceNotesRouter } from "../say-to-me/voice-notes.js";
+import { createSayToMeVoiceWidgetRouter } from "../say-to-me/voice-widget.js";
+import { createSayToMeTimersRouter } from "../say-to-me/timers.js";
+import { createSayToMeMessageAttachmentsRouter } from "../say-to-me/message-attachments.js";
 import { WorkspaceAutoName } from "./workspace-auto-name.js";
 import { createGitMutationService } from "./session/git-mutation/git-mutation-service.js";
 import { workspaceIdsOnCheckout } from "./workspace-directory.js";
@@ -683,6 +687,11 @@ export async function createPaseoDaemon(
   );
 
   app.use(express.json());
+
+  app.use("/api/voice-notes", createSayToMeVoiceNotesRouter());
+  app.use("/api/message-attachments", createSayToMeMessageAttachmentsRouter());
+  app.use("/api/say-to-me/timers", createSayToMeTimersRouter());
+  app.use(createSayToMeVoiceWidgetRouter());
 
   // Serve static files from public directory
   app.use("/public", express.static(staticDir));
