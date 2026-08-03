@@ -1674,6 +1674,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   sayToMeWidgetRow: {
     position: "relative",
+    zIndex: 1,
     width: "100%",
     minWidth: 0,
     flexShrink: 0,
