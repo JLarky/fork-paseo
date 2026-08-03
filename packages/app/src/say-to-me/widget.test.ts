@@ -3,9 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   isSayToMeParkSessionDetail,
   isSayToMeParkSessionEvent,
+  getSayToMeWidgetAttributes,
   resolveSayToMeWidgetClassicModuleUrl,
   resolveSayToMeWidgetHmrModuleUrl,
   SAY_TO_ME_PARK_SESSION_EVENT,
+  SAY_TO_ME_WIDGET_BANNER_API_VERSION,
+  SAY_TO_ME_WIDGET_HOST_STYLE,
+  SAY_TO_ME_WIDGET_NOTES_BASE_URL,
+  SAY_TO_ME_WIDGET_PARK_SESSION_VERSION,
+  SAY_TO_ME_WIDGET_STORAGE_KEY,
   SAY_TO_ME_WIDGET_TAG,
 } from "./widget";
 
@@ -16,10 +22,33 @@ describe("Say To Me widget host adapter", () => {
       resolveSayToMeWidgetHmrModuleUrl({
         isDev: true,
         hostname: "localhost",
-        stmOrigin: "http://localhost:5411",
+        stmOrigin: "http://localhost:5511",
       }),
-    ).toBe("http://localhost:5411/server/embed/solid/widget-hmr.ts");
-    expect(resolveSayToMeWidgetClassicModuleUrl()).toBe("http://localhost:5411/embed/widget.js");
+    ).toBe("http://localhost:5511/server/embed/solid/widget-hmr.ts");
+    expect(resolveSayToMeWidgetClassicModuleUrl()).toBe("http://localhost:5511/embed/widget.js");
+  });
+
+  it("mounts the STM v2 contract without sharing T3 collapse state", () => {
+    expect(SAY_TO_ME_WIDGET_BANNER_API_VERSION).toBe(2);
+    expect(SAY_TO_ME_WIDGET_PARK_SESSION_VERSION).toBe(1);
+    expect(getSayToMeWidgetAttributes("pa_agent-1")).toEqual({
+      "session-id": "pa_agent-1",
+      "notes-base-url": SAY_TO_ME_WIDGET_NOTES_BASE_URL,
+      "timers-base-url": "http://localhost:5511/api/say-to-me-timers",
+      "ui-base-url": "http://localhost:5511",
+      "storage-key": SAY_TO_ME_WIDGET_STORAGE_KEY,
+    });
+    expect(SAY_TO_ME_WIDGET_STORAGE_KEY).not.toBe("t3code:say-to-me-banner-collapsed:v1");
+  });
+
+  it("uses a full-width positioned block host for STM's collapsed anchor", () => {
+    expect(SAY_TO_ME_WIDGET_HOST_STYLE).toEqual({
+      position: "relative",
+      display: "block",
+      width: "100%",
+      minWidth: 0,
+      flexShrink: 0,
+    });
   });
 
   it("does not direct-load HMR from a production or non-local page", () => {
@@ -27,14 +56,14 @@ describe("Say To Me widget host adapter", () => {
       resolveSayToMeWidgetHmrModuleUrl({
         isDev: false,
         hostname: "localhost",
-        stmOrigin: "http://localhost:5411",
+        stmOrigin: "http://localhost:5511",
       }),
     ).toBeNull();
     expect(
       resolveSayToMeWidgetHmrModuleUrl({
         isDev: true,
         hostname: "example.test",
-        stmOrigin: "http://localhost:5411",
+        stmOrigin: "http://localhost:5511",
       }),
     ).toBeNull();
   });

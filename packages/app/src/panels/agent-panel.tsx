@@ -1673,10 +1673,10 @@ const styles = StyleSheet.create((theme) => ({
     ...(isWeb ? { userSelect: "none" as const } : {}),
   },
   sayToMeWidgetRow: {
-    minHeight: 32,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingHorizontal: theme.spacing[2],
+    position: "relative",
+    width: "100%",
+    minWidth: 0,
+    flexShrink: 0,
   },
   historySyncOverlay: {
     position: "absolute",
