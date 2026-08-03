@@ -150,19 +150,28 @@ async function proxyBuffered(response, origin, path, search, method, body) {
 
 async function proxySse(request, response, origin, sessionId) {
   const controller = new AbortController();
-  const abort = () => controller.abort();
-  request.once("close", abort);
+  const abort = () => {
+    if (!controller.signal.aborted) controller.abort();
+  };
+  const cleanup = () => {
+    request.removeListener("aborted", abort);
+    response.removeListener("close", abort);
+  };
+  request.once("aborted", abort);
+  response.once("close", abort);
   try {
     const upstream = await fetch(
       buildStmRequestUrl(origin, `/api/sessions/${encodeURIComponent(sessionId)}/events`),
       { signal: controller.signal },
     );
-    if (!upstream.ok || !upstream.body)
+    if (!upstream.ok || !upstream.body) {
+      cleanup();
       return jsonError(
         response,
         upstream.status === 404 ? 404 : 502,
         upstream.status === 404 ? "Voice session not found." : "Unable to open voice notes stream.",
       );
+    }
     response.statusCode = upstream.status;
     response.setHeader("content-type", upstream.headers.get("content-type") ?? "text/event-stream");
     response.setHeader("cache-control", "no-cache, no-transform");
@@ -170,11 +179,15 @@ async function proxySse(request, response, origin, sessionId) {
     response.setHeader("x-accel-buffering", "no");
     response.flushHeaders?.();
     const stream = Readable.fromWeb(upstream.body);
-    stream.on("error", () => response.destroy());
-    stream.on("close", () => request.removeListener("close", abort));
+    stream.on("error", () => {
+      cleanup();
+      response.destroy();
+    });
+    stream.once("end", cleanup);
+    stream.once("close", cleanup);
     stream.pipe(response);
   } catch {
-    request.removeListener("close", abort);
+    cleanup();
     if (!response.headersSent && !controller.signal.aborted)
       jsonError(response, 502, "Unable to open voice notes stream.");
   }
