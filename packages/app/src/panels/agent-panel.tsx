@@ -108,6 +108,7 @@ interface ChatAgentStateShape {
   serverId: string | null;
   id: string | null;
   provider?: Agent["provider"];
+  title?: Agent["title"];
   status: Agent["status"] | null;
   cwd: string | null;
   workspaceId?: string;
@@ -162,6 +163,7 @@ function selectChatAgentState(
     serverId: agent.serverId,
     id: agent.id,
     provider: agent.provider,
+    title: agent.title,
     status: agent.status,
     cwd: agent.cwd,
     workspaceId: agent.workspaceId,
@@ -1153,6 +1155,7 @@ function ChatAgentContent({
       isArchivingCurrentAgent={isArchivingCurrentAgent}
       agentState={agentState}
       effectiveAgent={effectiveAgent}
+      projectPlacement={projectPlacement}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
       toastApi={toastApi}
@@ -1179,6 +1182,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent,
   agentState,
   effectiveAgent,
+  projectPlacement,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
   toastApi,
@@ -1201,6 +1205,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent: boolean;
   agentState: ChatAgentSelectedState;
   effectiveAgent: AgentScreenAgent;
+  projectPlacement: Agent["projectPlacement"] | null;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
   toastApi: ToastApi;
@@ -1293,13 +1298,18 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
-  const handleParkSession = useCallback(() => {
-    navigateToAgent({ serverId, agentId });
-  }, [agentId, serverId]);
   const contentContainer = (
     <View style={styles.contentContainer}>
       <View style={styles.sayToMeWidgetRow}>
-        <SayToMeWidgetHost sessionId={`pa_${agentId}`} onParkSession={handleParkSession} />
+        <SayToMeWidgetHost
+          sessionId={`pa_${agentId}`}
+          environmentId={serverId}
+          threadId={agentId}
+          title={agentState.title}
+          project={projectPlacement?.projectName}
+          cwd={effectiveAgent.cwd}
+          branch={projectPlacement?.checkout?.currentBranch}
+        />
       </View>
       {streamContent}
     </View>

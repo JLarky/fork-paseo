@@ -1,21 +1,29 @@
 /** Host adapter for Say To Me's STM-owned `<say-to-me-widget>`. */
 
-export const SAY_TO_ME_WIDGET_TAG = "say-to-me-widget";
-export const SAY_TO_ME_PARK_SESSION_EVENT = "say-to-me-park-session";
+import { resolveSayToMeWidgetUiBaseUrl } from "./sayToMeUi";
+
+export const SAY_TO_ME_WIDGET_TAG = "say-to-me-widget" as const;
+export const SAY_TO_ME_WIDGET_SRC = "/api/say-to-me/embed/widget.js" as const;
+export const SAY_TO_ME_WIDGET_NOTES_BASE_URL = "/api/voice-notes" as const;
+export const SAY_TO_ME_WIDGET_TIMERS_BASE_URL = "/api/say-to-me-timers" as const;
 export const SAY_TO_ME_WIDGET_BANNER_API_VERSION = 2 as const;
 export const SAY_TO_ME_WIDGET_PARK_SESSION_VERSION = 1 as const;
-export const SAY_TO_ME_WIDGET_DEV_ORIGIN = "http://localhost:5511";
-export const SAY_TO_ME_WIDGET_SRC = "/embed/widget.js";
-export const SAY_TO_ME_WIDGET_NOTES_BASE_URL = `${SAY_TO_ME_WIDGET_DEV_ORIGIN}/api/voice-notes`;
-export const SAY_TO_ME_WIDGET_TIMERS_BASE_URL = `${SAY_TO_ME_WIDGET_DEV_ORIGIN}/api/say-to-me-timers`;
-export const SAY_TO_ME_WIDGET_UI_BASE_URL = SAY_TO_ME_WIDGET_DEV_ORIGIN;
-export const SAY_TO_ME_WIDGET_STORAGE_KEY = "paseo:say-to-me-widget-collapsed:v1";
-export const SAY_TO_ME_WIDGET_CAPABILITY_ATTRIBUTE = "data-banner-api-version";
-const SAY_TO_ME_WIDGET_HMR_PATH = "/server/embed/solid/widget-hmr.ts";
+export const SAY_TO_ME_PARK_SESSION_EVENT = "say-to-me-park-session" as const;
+export const SAY_TO_ME_WIDGET_STORAGE_KEY = "paseo:say-to-me-widget-collapsed:v1" as const;
+export const SAY_TO_ME_WIDGET_CAPABILITY_ATTRIBUTE = "data-banner-api-version" as const;
 
+const SAY_TO_ME_WIDGET_HMR_PATH = "/server/embed/solid/widget-hmr.ts";
 const WIDGET_SOURCE = "say-to-me-widget";
-const PARK_SESSION_VERSION = SAY_TO_ME_WIDGET_PARK_SESSION_VERSION;
 const PARK_SESSION_TYPE = "park-session";
+
+export interface ParkSessionContext {
+  readonly environmentId: string;
+  readonly threadId: string;
+  readonly title?: string | null | undefined;
+  readonly project?: string | null | undefined;
+  readonly cwd?: string | null | undefined;
+  readonly branch?: string | null | undefined;
+}
 
 export const SAY_TO_ME_WIDGET_HOST_STYLE = {
   position: "relative",
@@ -25,12 +33,15 @@ export const SAY_TO_ME_WIDGET_HOST_STYLE = {
   flexShrink: 0,
 } as const;
 
-export function getSayToMeWidgetAttributes(sessionId: string): Record<string, string> {
+export function getSayToMeWidgetAttributes(
+  sessionId: string,
+  uiBaseUrl = resolveSayToMeWidgetUiBaseUrl() ?? "",
+): Record<string, string> {
   return {
     "session-id": sessionId,
     "notes-base-url": SAY_TO_ME_WIDGET_NOTES_BASE_URL,
     "timers-base-url": SAY_TO_ME_WIDGET_TIMERS_BASE_URL,
-    "ui-base-url": SAY_TO_ME_WIDGET_UI_BASE_URL,
+    "ui-base-url": uiBaseUrl,
     "storage-key": SAY_TO_ME_WIDGET_STORAGE_KEY,
   };
 }
@@ -57,9 +68,9 @@ export function waitForSayToMeWidgetV2(element: Element, timeoutMs = 5_000): Pro
       attributeFilter: [SAY_TO_ME_WIDGET_CAPABILITY_ATTRIBUTE],
     });
   });
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timeoutId: number | undefined;
   const timedOut = new Promise<false>((resolve) => {
-    timeoutId = setTimeout(() => resolve(false), timeoutMs);
+    timeoutId = window.setTimeout(() => resolve(false), timeoutMs);
   });
   return Promise.race([widgetReady, timedOut]).finally(() => {
     observer?.disconnect();
@@ -80,10 +91,8 @@ export function resolveSayToMeWidgetHmrModuleUrl(input?: {
   const hostname =
     input?.hostname ?? (typeof window === "undefined" ? "" : window.location.hostname);
   const stmOrigin =
-    input?.stmOrigin ?? process.env.EXPO_PUBLIC_STM_DEV_ORIGIN ?? SAY_TO_ME_WIDGET_DEV_ORIGIN;
-  if (!isDev || !isLocalHostname(hostname) || !stmOrigin.trim()) {
-    return null;
-  }
+    input?.stmOrigin ?? process.env.EXPO_PUBLIC_STM_DEV_ORIGIN ?? "http://localhost:5411";
+  if (!isDev || !isLocalHostname(hostname) || !stmOrigin.trim()) return null;
 
   try {
     const origin = new URL(stmOrigin);
@@ -99,27 +108,22 @@ export function resolveSayToMeWidgetHmrModuleUrl(input?: {
   }
 }
 
-export function resolveSayToMeWidgetClassicModuleUrl(
-  stmOrigin = SAY_TO_ME_WIDGET_DEV_ORIGIN,
-): string {
-  return new URL(SAY_TO_ME_WIDGET_SRC, stmOrigin).toString();
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function isSayToMeParkSessionDetail(detail: unknown, expectedSessionId?: string): boolean {
-  if (detail === null || typeof detail !== "object") {
-    return false;
-  }
-  const record = detail as Record<string, unknown>;
+  if (!isRecord(detail)) return false;
   if (
-    record.source !== WIDGET_SOURCE ||
-    record.version !== PARK_SESSION_VERSION ||
-    record.type !== PARK_SESSION_TYPE ||
-    typeof record.sessionId !== "string" ||
-    record.sessionId.trim().length === 0
+    detail.source !== WIDGET_SOURCE ||
+    detail.version !== SAY_TO_ME_WIDGET_PARK_SESSION_VERSION ||
+    detail.type !== PARK_SESSION_TYPE ||
+    typeof detail.sessionId !== "string" ||
+    detail.sessionId.trim().length === 0
   ) {
     return false;
   }
-  return expectedSessionId === undefined || record.sessionId === expectedSessionId;
+  return expectedSessionId === undefined || detail.sessionId === expectedSessionId;
 }
 
 export function isSayToMeParkSessionEvent(event: Event, expectedSessionId?: string): boolean {
@@ -128,4 +132,40 @@ export function isSayToMeParkSessionEvent(event: Event, expectedSessionId?: stri
     event instanceof CustomEvent &&
     isSayToMeParkSessionDetail(event.detail, expectedSessionId)
   );
+}
+
+export function buildParkSessionUrl(
+  context: ParkSessionContext,
+  origin = typeof window !== "undefined" ? window.location.origin : "http://localhost",
+): URL {
+  const url = new URL("/park", origin);
+  url.searchParams.set("environmentId", context.environmentId);
+  url.searchParams.set("threadId", context.threadId);
+  for (const [key, value] of [
+    ["title", context.title],
+    ["project", context.project],
+    ["cwd", context.cwd],
+    ["branch", context.branch],
+  ] as const) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      url.searchParams.set(key, value);
+    }
+  }
+  return url;
+}
+
+export function assignParkSessionUrl(context: ParkSessionContext): void {
+  window.location.assign(buildParkSessionUrl(context));
+}
+
+export function assignParkSessionFromEvent(
+  event: Event,
+  expectedSessionId: string,
+  context: ParkSessionContext,
+): boolean {
+  if (!expectedSessionId.trim() || !isSayToMeParkSessionEvent(event, expectedSessionId)) {
+    return false;
+  }
+  assignParkSessionUrl(context);
+  return true;
 }
