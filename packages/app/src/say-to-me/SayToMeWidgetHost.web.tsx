@@ -3,9 +3,12 @@ import { createElement, useEffect, useRef, useState } from "react";
 import {
   assignParkSessionFromEvent,
   getSayToMeWidgetAttributes,
+  insertSayToMeUsagePromptFromEvent,
+  resolveMountedSayToMeWidget,
   resolveSayToMeWidgetHmrModuleUrl,
   SAY_TO_ME_WIDGET_SRC,
   SAY_TO_ME_PARK_SESSION_EVENT,
+  SAY_TO_ME_USAGE_PROMPT_EVENT,
   SAY_TO_ME_WIDGET_HOST_STYLE,
   SAY_TO_ME_WIDGET_TAG,
   waitForSayToMeWidgetV2,
@@ -62,6 +65,7 @@ export function SayToMeWidgetHost({
   project,
   cwd,
   branch,
+  onInsertUsagePrompt,
 }: SayToMeWidgetHostProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [capability, setCapability] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -69,7 +73,7 @@ export function SayToMeWidgetHost({
 
   useEffect(() => {
     const node = hostRef.current;
-    const widget = node?.querySelector<HTMLElement>(SAY_TO_ME_WIDGET_TAG);
+    const widget = node ? resolveMountedSayToMeWidget(node) : null;
     if (!node || !widget) return;
 
     let disposed = false;
@@ -77,7 +81,11 @@ export function SayToMeWidgetHost({
     const onPark = (event: Event) => {
       assignParkSessionFromEvent(event, sessionId, context);
     };
+    const onUsagePrompt = (event: Event) => {
+      insertSayToMeUsagePromptFromEvent(event, widget, onInsertUsagePrompt);
+    };
     node.addEventListener(SAY_TO_ME_PARK_SESSION_EVENT, onPark);
+    node.addEventListener(SAY_TO_ME_USAGE_PROMPT_EVENT, onUsagePrompt);
 
     const loaderUrl = hmrModuleUrl ?? SAY_TO_ME_WIDGET_SRC;
     void loadSayToMeWidgetScript(loaderUrl, hmrModuleUrl !== null)
@@ -99,8 +107,19 @@ export function SayToMeWidgetHost({
     return () => {
       disposed = true;
       node.removeEventListener(SAY_TO_ME_PARK_SESSION_EVENT, onPark);
+      node.removeEventListener(SAY_TO_ME_USAGE_PROMPT_EVENT, onUsagePrompt);
     };
-  }, [branch, cwd, environmentId, hmrModuleUrl, project, sessionId, threadId, title]);
+  }, [
+    branch,
+    cwd,
+    environmentId,
+    hmrModuleUrl,
+    onInsertUsagePrompt,
+    project,
+    sessionId,
+    threadId,
+    title,
+  ]);
 
   return (
     <div ref={hostRef} data-testid="say-to-me-widget-host" style={SAY_TO_ME_WIDGET_HOST_STYLE}>
