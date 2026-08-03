@@ -8,13 +8,16 @@ export const SAY_TO_ME_WIDGET_NOTES_BASE_URL = "/api/voice-notes" as const;
 export const SAY_TO_ME_WIDGET_TIMERS_BASE_URL = "/api/say-to-me-timers" as const;
 export const SAY_TO_ME_WIDGET_BANNER_API_VERSION = 2 as const;
 export const SAY_TO_ME_WIDGET_PARK_SESSION_VERSION = 1 as const;
+export const SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION = 2 as const;
 export const SAY_TO_ME_PARK_SESSION_EVENT = "say-to-me-park-session" as const;
+export const SAY_TO_ME_USAGE_PROMPT_EVENT = "say-to-me-insert-usage-prompt" as const;
 export const SAY_TO_ME_WIDGET_STORAGE_KEY = "paseo:say-to-me-widget-collapsed:v1" as const;
 export const SAY_TO_ME_WIDGET_CAPABILITY_ATTRIBUTE = "data-banner-api-version" as const;
 
 const SAY_TO_ME_WIDGET_HMR_PATH = "/server/embed/solid/widget-hmr.ts";
 const WIDGET_SOURCE = "say-to-me-widget";
 const PARK_SESSION_TYPE = "park-session";
+const USAGE_PROMPT_TYPE = "insert-usage-prompt";
 
 export interface ParkSessionContext {
   readonly environmentId: string;
@@ -51,6 +54,45 @@ export function isSayToMeWidgetV2(element: Element): boolean {
     element.getAttribute(SAY_TO_ME_WIDGET_CAPABILITY_ATTRIBUTE) ===
     String(SAY_TO_ME_WIDGET_BANNER_API_VERSION)
   );
+}
+
+export function resolveMountedSayToMeWidget(root: ParentNode): Element | null {
+  const widgets = root.querySelectorAll(SAY_TO_ME_WIDGET_TAG);
+  return widgets.length === 1 ? widgets[0] : null;
+}
+
+export function isSayToMeUsagePromptDetail(detail: unknown): detail is {
+  readonly source: typeof WIDGET_SOURCE;
+  readonly version: typeof SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION;
+  readonly type: typeof USAGE_PROMPT_TYPE;
+  readonly prompt: string;
+} {
+  return (
+    isRecord(detail) &&
+    detail.source === WIDGET_SOURCE &&
+    detail.version === SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION &&
+    detail.type === USAGE_PROMPT_TYPE &&
+    typeof detail.prompt === "string"
+  );
+}
+
+export function insertSayToMeUsagePromptFromEvent(
+  event: Event,
+  widget: Element | null,
+  insertPrompt: ((prompt: string) => void) | undefined,
+): boolean {
+  if (
+    !insertPrompt ||
+    !widget ||
+    event.type !== SAY_TO_ME_USAGE_PROMPT_EVENT ||
+    event.target !== widget ||
+    !(event instanceof CustomEvent) ||
+    !isSayToMeUsagePromptDetail(event.detail)
+  ) {
+    return false;
+  }
+  insertPrompt(event.detail.prompt);
+  return true;
 }
 
 export function waitForSayToMeWidgetV2(element: Element, timeoutMs = 5_000): Promise<boolean> {
