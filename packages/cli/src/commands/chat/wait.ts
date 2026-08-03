@@ -11,6 +11,7 @@ import { chatMessageSchema, type ChatMessageRow, toChatMessageRow } from "./sche
 
 export interface ChatWaitOptions extends ChatCommandOptions {
   timeout?: string;
+  after?: string;
 }
 
 const CHAT_WAIT_PREFLIGHT_TIMEOUT_MS = 2000;
@@ -27,16 +28,19 @@ export async function runWaitCommand(
   const remainingTimeoutMs = () =>
     deadline === null ? undefined : Math.max(1, deadline - Date.now());
   try {
-    const latest = await client.readChatMessages({
-      room,
-      limit: 1,
-      ...(hasExplicitTimeout
-        ? {
-            timeout: Math.min(remainingTimeoutMs() ?? 1, CHAT_WAIT_PREFLIGHT_TIMEOUT_MS),
-          }
-        : {}),
-    });
-    const afterMessageId = latest.messages[0]?.id;
+    const afterMessageId =
+      options.after ??
+      (
+        await client.readChatMessages({
+          room,
+          limit: 1,
+          ...(hasExplicitTimeout
+            ? {
+                timeout: Math.min(remainingTimeoutMs() ?? 1, CHAT_WAIT_PREFLIGHT_TIMEOUT_MS),
+              }
+            : {}),
+        })
+      ).messages[0]?.id;
     const payload = await client.waitForChatMessages({
       room,
       afterMessageId,

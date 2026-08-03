@@ -62,6 +62,7 @@ export function createChatCommand(): Command {
       .command("wait")
       .description("Wait for new chat messages")
       .argument("<name-or-id>", "Room name or ID")
+      .option("--after <message-id>", "Wait for messages after this message ID")
       .option("--timeout <duration>", "Maximum wait time"),
   ).action(withOutput(runWaitCommand));
 
