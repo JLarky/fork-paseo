@@ -196,6 +196,7 @@ import {
   createSayToMeMessageAttachmentsRouter,
   SAY_TO_ME_MESSAGE_ATTACHMENTS_PATH,
 } from "../say-to-me/message-attachments.js";
+import { createParkPageHandler, PARK_PAGE_PATH } from "../say-to-me/park-page.js";
 import { createSayToMeTimersRouter, SAY_TO_ME_TIMERS_PATH } from "../say-to-me/timers.js";
 import {
   createSayToMeVoiceNotesRouter,
@@ -682,6 +683,12 @@ export async function createPaseoDaemon(
     express.json(),
     createTerminalActivityRouteHandler(terminalManager),
   );
+
+  // Parked STM sessions land on this static, script-free HTML page. It
+  // reflects only its own escaped query and reads no daemon state, so like the
+  // web UI static files below it mounts before daemon bearer auth — and it
+  // must precede mountWebUi so the SPA fallback never swallows /park.
+  app.get(PARK_PAGE_PATH, createParkPageHandler());
 
   // Serve the bundled browser web UI when enabled. Mounted after service-proxy
   // classification and host/CORS handling, but before daemon bearer auth, so
