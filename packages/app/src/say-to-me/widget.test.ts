@@ -5,6 +5,8 @@ import {
   assignParkSessionUrl,
   buildParkSessionUrl,
   getSayToMeWidgetAttributes,
+  insertSayToMeUsagePromptFromEvent,
+  resolveMountedSayToMeWidget,
   isSayToMeParkSessionDetail,
   isSayToMeParkSessionEvent,
   resolveSayToMeWidgetHmrModuleUrl,
@@ -13,6 +15,8 @@ import {
   SAY_TO_ME_WIDGET_HOST_STYLE,
   SAY_TO_ME_WIDGET_NOTES_BASE_URL,
   SAY_TO_ME_WIDGET_PARK_SESSION_VERSION,
+  SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION,
+  SAY_TO_ME_USAGE_PROMPT_EVENT,
   SAY_TO_ME_WIDGET_SRC,
   SAY_TO_ME_WIDGET_STORAGE_KEY,
   SAY_TO_ME_WIDGET_TAG,
@@ -115,6 +119,86 @@ describe("Say To Me widget host adapter", () => {
     expect(isSayToMeParkSessionEvent(new Event(SAY_TO_ME_PARK_SESSION_EVENT), sessionId)).toBe(
       false,
     );
+  });
+
+  it("inserts a valid STM v2 usage prompt into the mounted widget's composer", () => {
+    const widget = new EventTarget() as unknown as Element;
+    const root = {
+      querySelectorAll: () => [widget],
+    } as unknown as ParentNode;
+    const inserted: string[] = [];
+    const event = new CustomEvent(SAY_TO_ME_USAGE_PROMPT_EVENT, {
+      bubbles: true,
+      detail: {
+        source: "say-to-me-widget",
+        version: SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION,
+        type: "insert-usage-prompt",
+        prompt: "Tell your agent how to use Say To Me",
+      },
+    });
+
+    widget.dispatchEvent(event);
+
+    expect(
+      insertSayToMeUsagePromptFromEvent(event, resolveMountedSayToMeWidget(root), (prompt) => {
+        inserted.push(prompt);
+      }),
+    ).toBe(true);
+    expect(inserted).toEqual(["Tell your agent how to use Say To Me"]);
+  });
+
+  it("rejects wrong source, version, and event type without changing the draft", () => {
+    const widget = new EventTarget() as unknown as Element;
+    const inserted: string[] = [];
+    const dispatch = (
+      detail: Record<string, unknown>,
+      eventName: string = SAY_TO_ME_USAGE_PROMPT_EVENT,
+    ) => {
+      const event = new CustomEvent(eventName, { detail });
+      widget.dispatchEvent(event);
+      return insertSayToMeUsagePromptFromEvent(event, widget, (prompt) => inserted.push(prompt));
+    };
+    const valid = {
+      source: "say-to-me-widget",
+      version: SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION,
+      type: "insert-usage-prompt",
+      prompt: "new draft",
+    };
+
+    expect(dispatch({ ...valid, source: "other" })).toBe(false);
+    expect(dispatch({ ...valid, version: 1 })).toBe(false);
+    expect(dispatch({ ...valid, type: "park-session" })).toBe(false);
+    expect(dispatch(valid, "other-event")).toBe(false);
+    expect(inserted).toEqual([]);
+  });
+
+  it("does not guess when the mounted widget target is missing or ambiguous", () => {
+    const root = {
+      querySelectorAll: () => [] as Element[],
+    } as unknown as ParentNode;
+    const first = new EventTarget() as unknown as Element;
+    const second = new EventTarget() as unknown as Element;
+    const inserted: string[] = [];
+    const event = new CustomEvent(SAY_TO_ME_USAGE_PROMPT_EVENT, {
+      detail: {
+        source: "say-to-me-widget",
+        version: SAY_TO_ME_WIDGET_USAGE_PROMPT_VERSION,
+        type: "insert-usage-prompt",
+        prompt: "should not insert",
+      },
+    });
+    first.dispatchEvent(event);
+
+    expect(resolveMountedSayToMeWidget(root)).toBeNull();
+    (root as unknown as { querySelectorAll: () => Element[] }).querySelectorAll = () => [
+      first,
+      second,
+    ];
+    expect(resolveMountedSayToMeWidget(root)).toBeNull();
+    expect(insertSayToMeUsagePromptFromEvent(event, null, (prompt) => inserted.push(prompt))).toBe(
+      false,
+    );
+    expect(inserted).toEqual([]);
   });
 
   it("builds the exact static Park document URL and omits blank optional fields", () => {

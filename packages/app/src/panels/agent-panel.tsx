@@ -1239,6 +1239,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           sessionId={`pa_${agentId}`}
           environmentId={serverId}
           threadId={agentId}
+          onInsertUsagePrompt={agentInputDraft.setText}
           title={agentState.title}
           project={projectPlacement?.projectName}
           cwd={effectiveAgent.cwd}
