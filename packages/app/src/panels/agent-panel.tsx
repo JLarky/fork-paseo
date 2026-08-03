@@ -36,7 +36,6 @@ import {
 import type { WorkspaceComposerAttachment } from "@/attachments/types";
 import { useWorkspaceAttachmentScopeKey } from "@/attachments/workspace-attachments-store";
 import { COMPACT_FORM_FACTOR_WIDTH, useIsCompactFormFactor } from "@/constants/layout";
-import { isWeb } from "@/constants/platform";
 import { useAgentAttentionClear } from "@/hooks/use-agent-attention-clear";
 import { useAgentInitialization } from "@/hooks/use-agent-initialization";
 import { useAgentInputDraft, type AgentInputDraft } from "@/composer/draft/input-draft";
@@ -91,11 +90,13 @@ import type { WorkspaceFileOpenRequest } from "@/workspace/file-open";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { deriveSidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { buildDraftAgentSetup, type ClientSlashCommand } from "@/client-slash-commands";
+import { SayToMeWidgetHost } from "@/say-to-me/SayToMeWidgetHost";
 
 interface ChatAgentStateShape {
   serverId: string | null;
   id: string | null;
   provider?: Agent["provider"];
+  title?: Agent["title"];
   status: Agent["status"] | null;
   cwd: string | null;
   workspaceId?: string;
@@ -146,6 +147,7 @@ function selectChatAgentState(
     serverId: agent.serverId,
     id: agent.id,
     provider: agent.provider,
+    title: agent.title,
     status: agent.status,
     cwd: agent.cwd,
     workspaceId: agent.workspaceId,
@@ -1087,6 +1089,7 @@ function ChatAgentContent({
       isArchivingCurrentAgent={isArchivingCurrentAgent}
       agentState={agentState}
       effectiveAgent={effectiveAgent}
+      projectPlacement={projectPlacement}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
       toastApi={toastApi}
@@ -1113,6 +1116,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent,
   agentState,
   effectiveAgent,
+  projectPlacement,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
   toastApi,
@@ -1135,6 +1139,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   isArchivingCurrentAgent: boolean;
   agentState: ChatAgentSelectedState;
   effectiveAgent: AgentScreenAgent;
+  projectPlacement: Agent["projectPlacement"] | null;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
   toastApi: ToastApi;
@@ -1227,7 +1232,22 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <ReanimatedAnimated.View style={animatedContentStyle}>{streamSection}</ReanimatedAnimated.View>
   );
-  const contentContainer = <View style={styles.contentContainer}>{streamContent}</View>;
+  const contentContainer = (
+    <View style={styles.contentContainer}>
+      <View style={styles.sayToMeWidgetRow}>
+        <SayToMeWidgetHost
+          sessionId={`pa_${agentId}`}
+          environmentId={serverId}
+          threadId={agentId}
+          title={agentState.title}
+          project={projectPlacement?.projectName}
+          cwd={effectiveAgent.cwd}
+          branch={projectPlacement?.checkout?.currentBranch}
+        />
+      </View>
+      {streamContent}
+    </View>
+  );
 
   return (
     <RewindComposerRestoreProvider text={agentInputDraft.text} setText={agentInputDraft.setText}>
@@ -1659,7 +1679,13 @@ const styles = StyleSheet.create((theme) => ({
   contentContainer: {
     flex: 1,
     overflow: "hidden",
-    ...(isWeb ? { userSelect: "none" as const } : {}),
+  },
+  sayToMeWidgetRow: {
+    position: "relative",
+    zIndex: 1,
+    width: "100%",
+    minWidth: 0,
+    flexShrink: 0,
   },
   historySyncOverlay: {
     position: "absolute",

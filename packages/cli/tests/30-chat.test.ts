@@ -44,6 +44,24 @@ try {
     const readPayload = JSON.parse(readJson.stdout);
     assert.strictEqual(readPayload[0]?.author, "00000000-0000-4000-8000-000000000111");
 
+    const cursor = readPayload[0]?.id;
+    assert(cursor, "chat read did not return a cursor");
+    const waitWithCursor = ctx.paseo([
+      "chat",
+      "wait",
+      "coord-room",
+      "--after",
+      cursor,
+      "--timeout",
+      "30s",
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const cursorPost = await ctx.paseo(["chat", "post", "coord-room", "cursor message"]);
+    assert.strictEqual(cursorPost.exitCode, 0, cursorPost.stderr);
+    const cursorWaited = await waitWithCursor;
+    assert.strictEqual(cursorWaited.exitCode, 0, cursorWaited.stderr);
+    assert(cursorWaited.stdout.includes("cursor message"), cursorWaited.stdout);
+
     // `chat wait` reads "latest message id" then subscribes for newer ones.
     // Under CI load the subprocess can take >1s to bootstrap, so a single
     // delayed post races against the read. Post repeatedly and race against
