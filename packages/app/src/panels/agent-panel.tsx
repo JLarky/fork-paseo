@@ -37,7 +37,6 @@ import {
 import type { WorkspaceComposerAttachment } from "@/attachments/types";
 import { useWorkspaceAttachmentScopeKey } from "@/attachments/workspace-attachments-store";
 import { COMPACT_FORM_FACTOR_WIDTH, useIsCompactFormFactor } from "@/constants/layout";
-import { isWeb } from "@/constants/platform";
 import { useAgentAttentionClear } from "@/hooks/use-agent-attention-clear";
 import { useAgentInitialization } from "@/hooks/use-agent-initialization";
 import { useAgentInputDraft, type AgentInputDraft } from "@/composer/draft/input-draft";
@@ -1753,7 +1752,6 @@ const styles = StyleSheet.create((theme) => ({
   contentContainer: {
     flex: 1,
     overflow: "hidden",
-    ...(isWeb ? { userSelect: "none" as const } : {}),
   },
   sayToMeWidgetRow: {
     position: "relative",
