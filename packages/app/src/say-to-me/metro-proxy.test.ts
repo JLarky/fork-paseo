@@ -3,18 +3,53 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { buildDaemonRequestUrl, isSayToMeProxyPath, normalizeDaemonEndpoint } =
-  require("./metro-proxy.cjs") as {
-    buildDaemonRequestUrl: (endpoint: string, requestUrl: string) => string;
-    isSayToMeProxyPath: (pathname: string) => boolean;
-    normalizeDaemonEndpoint: (endpoint?: string) => string;
-  };
+const {
+  buildDaemonRequestUrl,
+  createSayToMeProxyMiddleware,
+  isSayToMeProxyPath,
+  normalizeDaemonEndpoint,
+} = require("./metro-proxy.cjs") as {
+  buildDaemonRequestUrl: (endpoint: string, requestUrl: string) => string;
+  createSayToMeProxyMiddleware: (
+    endpoint?: string,
+  ) => ReturnType<(typeof import("./metro-proxy.cjs"))["createSayToMeProxyMiddleware"]>;
+  isSayToMeProxyPath: (pathname: string) => boolean;
+  normalizeDaemonEndpoint: (endpoint?: string) => string;
+};
 
 describe("Paseo dev STM Metro proxy", () => {
   it("normalizes configured daemon endpoints", () => {
     expect(normalizeDaemonEndpoint("localhost:6767")).toBe("http://localhost:6767");
     expect(normalizeDaemonEndpoint("http://localhost:6767/")).toBe("http://localhost:6767");
     expect(normalizeDaemonEndpoint("")).toBe("http://localhost:6767");
+    expect(normalizeDaemonEndpoint("http://stm.test:6768")).toBe("http://stm.test:6768");
+  });
+
+  it("resolves proxy endpoint from PASEO_STM_PROXY_ENDPOINT first", () => {
+    process.env.PASEO_STM_PROXY_ENDPOINT = "http://stm.test:6768";
+    process.env.PASEO_DEV_DAEMON_ENDPOINT = "http://daemon.test:6767";
+    const middleware = createSayToMeProxyMiddleware();
+    expect(middleware).toBeDefined();
+    expect(typeof middleware).toBe("function");
+    delete process.env.PASEO_STM_PROXY_ENDPOINT;
+    delete process.env.PASEO_DEV_DAEMON_ENDPOINT;
+  });
+
+  it("falls back to PASEO_DEV_DAEMON_ENDPOINT when STM proxy is not set", () => {
+    delete process.env.PASEO_STM_PROXY_ENDPOINT;
+    process.env.PASEO_DEV_DAEMON_ENDPOINT = "http://daemon.test:6767";
+    const middleware = createSayToMeProxyMiddleware();
+    expect(middleware).toBeDefined();
+    expect(typeof middleware).toBe("function");
+    delete process.env.PASEO_DEV_DAEMON_ENDPOINT;
+  });
+
+  it("falls back to localhost:6767 when neither env var is set", () => {
+    delete process.env.PASEO_STM_PROXY_ENDPOINT;
+    delete process.env.PASEO_DEV_DAEMON_ENDPOINT;
+    const middleware = createSayToMeProxyMiddleware();
+    expect(middleware).toBeDefined();
+    expect(typeof middleware).toBe("function");
   });
 
   it("preserves the fixed route path and query", () => {
