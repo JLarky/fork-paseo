@@ -1236,6 +1236,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     <View style={styles.contentContainer}>
       <View style={styles.sayToMeWidgetRow}>
         <SayToMeWidgetHost
+          key={`pa_${agentId}`}
           sessionId={`pa_${agentId}`}
           environmentId={serverId}
           threadId={agentId}
