@@ -225,7 +225,40 @@ describe("Paseo dev STM Metro adapter", () => {
     expect(response.body).toBe("image");
   });
 
-  it("keeps SSE unbounded and aborts upstream when the client disconnects", async () => {
+  it("does not abort an unbounded SSE stream when the request closes normally", async () => {
+    let signal: AbortSignal | undefined;
+    let enqueue: ((chunk: Uint8Array) => void) | undefined;
+    let closeUpstream: (() => void) | undefined;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      signal = init.signal as AbortSignal;
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            enqueue = (chunk) => controller.enqueue(chunk);
+            closeUpstream = () => controller.close();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new TestRequest(
+      "GET",
+      "/api/voice-notes/pa_12345678-1234-1234-1234-123456789abc/events",
+    );
+    const response = responseFixture();
+    createSayToMeProxyMiddleware()(request, response, vi.fn());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    request.emit("close");
+    expect(signal?.aborted).toBe(false);
+    enqueue?.(new TextEncoder().encode("data: normal-close-safe\n\n"));
+    await vi.waitFor(() => expect(response.body).toContain("normal-close-safe"));
+    closeUpstream?.();
+    await vi.waitFor(() => expect(response.writableFinished).toBe(true));
+    expect(signal?.aborted).toBe(false);
+  });
+
+  it("aborts upstream on an actual client disconnect", async () => {
     let signal: AbortSignal | undefined;
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       signal = init.signal as AbortSignal;
@@ -241,7 +274,27 @@ describe("Paseo dev STM Metro adapter", () => {
     const response = responseFixture();
     createSayToMeProxyMiddleware()(request, response, vi.fn());
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-    request.emit("close");
+    response.emit("close");
+    await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+  });
+
+  it("aborts upstream when the request is actually aborted", async () => {
+    let signal: AbortSignal | undefined;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      signal = init.signal as AbortSignal;
+      return new Response(new ReadableStream({ start() {} }), {
+        headers: { "content-type": "text/event-stream" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new TestRequest(
+      "GET",
+      "/api/voice-notes/pa_12345678-1234-1234-1234-123456789abc/events",
+    );
+    const response = responseFixture();
+    createSayToMeProxyMiddleware()(request, response, vi.fn());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    request.emit("aborted");
     await vi.waitFor(() => expect(signal?.aborted).toBe(true));
   });
 });
