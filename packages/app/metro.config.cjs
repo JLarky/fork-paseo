@@ -2,6 +2,7 @@ const { getDefaultConfig } = require("expo/metro-config");
 const { resolve } = require("metro-resolver");
 const fs = require("fs");
 const path = require("path");
+const { createSayToMeProxyMiddleware } = require("./src/say-to-me/metro-proxy.cjs");
 
 const projectRoot = __dirname;
 const appNodeModulesRoot = path.resolve(projectRoot, "node_modules");
@@ -101,6 +102,7 @@ if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
     const middleware = originalEnhanceMiddleware
       ? originalEnhanceMiddleware(metroMiddleware, server)
       : metroMiddleware;
+    const proxy = createSayToMeProxyMiddleware();
     const serveSimulator = simMiddleware({
       basePath: "/.sim",
       device: process.env.PASEO_SERVE_SIM_DEVICE_UDID,
@@ -114,9 +116,19 @@ if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
           }
           throw error;
         }
-        middleware(req, res, next);
+        proxy(req, res, () => middleware(req, res, next));
       });
     };
+  };
+} else {
+  const originalEnhanceMiddleware = config.server?.enhanceMiddleware;
+  config.server = config.server ?? {};
+  config.server.enhanceMiddleware = (metroMiddleware, server) => {
+    const middleware = originalEnhanceMiddleware
+      ? originalEnhanceMiddleware(metroMiddleware, server)
+      : metroMiddleware;
+    const proxy = createSayToMeProxyMiddleware();
+    return (req, res, next) => proxy(req, res, () => middleware(req, res, next));
   };
 }
 
