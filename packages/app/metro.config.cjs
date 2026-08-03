@@ -3,6 +3,8 @@ const { resolve } = require("metro-resolver");
 const fs = require("fs");
 const path = require("path");
 const { createSayToMeProxyMiddleware } = require("./src/say-to-me/metro-proxy.cjs");
+const stmProxyMiddleware =
+  process.env.NODE_ENV === "production" ? null : createSayToMeProxyMiddleware();
 
 const projectRoot = __dirname;
 const appNodeModulesRoot = path.resolve(projectRoot, "node_modules");
@@ -102,7 +104,7 @@ if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
     const middleware = originalEnhanceMiddleware
       ? originalEnhanceMiddleware(metroMiddleware, server)
       : metroMiddleware;
-    const proxy = createSayToMeProxyMiddleware();
+    const proxy = stmProxyMiddleware;
     const serveSimulator = simMiddleware({
       basePath: "/.sim",
       device: process.env.PASEO_SERVE_SIM_DEVICE_UDID,
@@ -116,7 +118,8 @@ if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
           }
           throw error;
         }
-        proxy(req, res, () => middleware(req, res, next));
+        if (proxy) proxy(req, res, () => middleware(req, res, next));
+        else middleware(req, res, next);
       });
     };
   };
@@ -127,8 +130,11 @@ if (process.env.PASEO_SERVE_SIM_PREVIEW === "1") {
     const middleware = originalEnhanceMiddleware
       ? originalEnhanceMiddleware(metroMiddleware, server)
       : metroMiddleware;
-    const proxy = createSayToMeProxyMiddleware();
-    return (req, res, next) => proxy(req, res, () => middleware(req, res, next));
+    const proxy = stmProxyMiddleware;
+    return (req, res, next) => {
+      if (proxy) proxy(req, res, () => middleware(req, res, next));
+      else middleware(req, res, next);
+    };
   };
 }
 
