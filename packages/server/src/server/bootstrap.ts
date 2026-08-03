@@ -192,19 +192,6 @@ import {
   type DaemonAuthConfig,
 } from "./auth.js";
 import { createWebUiMiddleware } from "./web-ui.js";
-import {
-  createSayToMeMessageAttachmentsRouter,
-  SAY_TO_ME_MESSAGE_ATTACHMENTS_PATH,
-} from "../say-to-me/message-attachments.js";
-import { createSayToMeTimersRouter, SAY_TO_ME_TIMERS_PATH } from "../say-to-me/timers.js";
-import {
-  createSayToMeVoiceNotesRouter,
-  SAY_TO_ME_VOICE_NOTES_PATH,
-} from "../say-to-me/voice-notes.js";
-import {
-  createSayToMeWidgetScriptHandler,
-  SAY_TO_ME_WIDGET_SCRIPT_PATH,
-} from "../say-to-me/widget-script.js";
 import { WorkspaceAutoName } from "./workspace-auto-name.js";
 import { createGitMutationService } from "./session/git-mutation/git-mutation-service.js";
 import { workspaceIdsOnCheckout } from "./workspace-directory.js";
@@ -714,14 +701,6 @@ export async function createPaseoDaemon(
       listen: formatListenTarget(boundListenTarget ?? listenTarget),
     });
   });
-
-  // Say To Me proxy: the app talks to the daemon only; the daemon forwards
-  // fixed STM paths upstream. Mounted behind daemon bearer auth like the rest
-  // of the API surface, after express.json() for the routes that read bodies.
-  app.get(SAY_TO_ME_WIDGET_SCRIPT_PATH, createSayToMeWidgetScriptHandler());
-  app.use(SAY_TO_ME_VOICE_NOTES_PATH, createSayToMeVoiceNotesRouter());
-  app.use(SAY_TO_ME_TIMERS_PATH, createSayToMeTimersRouter());
-  app.use(SAY_TO_ME_MESSAGE_ATTACHMENTS_PATH, createSayToMeMessageAttachmentsRouter());
 
   const handleFileDownload = async (req: express.Request, res: express.Response): Promise<void> => {
     const token =
