@@ -73,7 +73,9 @@ function copySafeResponseHeaders(response, target) {
   }
 }
 
-function createSayToMeProxyMiddleware(endpoint = process.env.PASEO_DEV_DAEMON_ENDPOINT) {
+function createSayToMeProxyMiddleware(
+  endpoint = process.env.PASEO_STM_PROXY_ENDPOINT || process.env.PASEO_DEV_DAEMON_ENDPOINT,
+) {
   const normalizedEndpoint = normalizeDaemonEndpoint(endpoint);
   return (request, response, next) => {
     const requestUrl = new URL(request.url ?? "/", "http://metro.invalid");
