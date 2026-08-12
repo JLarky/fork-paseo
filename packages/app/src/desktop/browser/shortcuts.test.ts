@@ -178,6 +178,20 @@ describe("buildBrowserKeyboardPolicy", () => {
     }
   });
 
+  it("leaves macOS Cmd+L available to the browser", () => {
+    const bindings = buildEffectiveBindings({});
+    const policy = buildBrowserKeyboardPolicy({ bindings, isMac: true, isDesktop: true });
+
+    expect(policy.prefixes).not.toContainEqual({
+      alt: false,
+      code: "KeyL",
+      control: false,
+      key: "l",
+      meta: true,
+      shift: false,
+    });
+  });
+
   it("marks editable-only exclusions for enforcement inside the guest", () => {
     const bindings = buildEffectiveBindings({});
     const policy = buildBrowserKeyboardPolicy({ bindings, isMac: true, isDesktop: true });
