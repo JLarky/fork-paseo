@@ -2,6 +2,7 @@ import { createElement, forwardRef, useEffect, useMemo, useRef, useState } from 
 import type { CSSProperties, ReactNode } from "react";
 import { withUnistyles } from "react-native-unistyles";
 
+import { Alert } from "@/components/ui/alert";
 import { MAX_CONTENT_WIDTH } from "@/constants/layout";
 import {
   assignParkSessionFromEvent,
@@ -19,6 +20,27 @@ import {
 import type { SayToMeWidgetHostProps } from "./SayToMeWidgetHost";
 
 const CAPABILITY_TIMEOUT_MS = 5_000;
+
+const UNAVAILABLE_DESCRIPTION_STYLE = {
+  display: "grid",
+  gap: 8,
+  color: "var(--muted-foreground)",
+  fontSize: 12,
+  lineHeight: 1.4,
+} satisfies CSSProperties;
+
+const UNAVAILABLE_URL_STYLE = {
+  display: "block",
+  maxWidth: "100%",
+  padding: "5px 8px",
+  borderRadius: 6,
+  background: "var(--muted)",
+  color: "var(--muted-foreground)",
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  fontSize: 12,
+  lineHeight: 1.4,
+  overflowWrap: "anywhere",
+} satisfies CSSProperties;
 
 type WidgetThemeVariables = CSSProperties & {
   "--background": string;
@@ -132,6 +154,23 @@ export function SayToMeWidgetHost({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [capability, setCapability] = useState<"loading" | "ready" | "unavailable">("loading");
   const hmrModuleUrl = resolveSayToMeWidgetHmrModuleUrl();
+  const widgetUrl = hmrModuleUrl ?? SAY_TO_ME_WIDGET_SRC;
+  const attemptedWidgetUrl =
+    typeof window === "undefined" ? widgetUrl : new URL(widgetUrl, window.location.href).toString();
+  const unavailableDescription = useMemo(
+    () => (
+      <div style={UNAVAILABLE_DESCRIPTION_STYLE}>
+        <span>
+          The voice service could not be reached. Check that the Say To Me server is running, then
+          reload this page.
+        </span>
+        <code style={UNAVAILABLE_URL_STYLE} title={attemptedWidgetUrl}>
+          Widget URL: {attemptedWidgetUrl}
+        </code>
+      </div>
+    ),
+    [attemptedWidgetUrl],
+  );
 
   useEffect(() => {
     const node = hostRef.current;
@@ -149,8 +188,7 @@ export function SayToMeWidgetHost({
     node.addEventListener(SAY_TO_ME_PARK_SESSION_EVENT, onPark);
     node.addEventListener(SAY_TO_ME_USAGE_PROMPT_EVENT, onUsagePrompt);
 
-    const loaderUrl = hmrModuleUrl ?? SAY_TO_ME_WIDGET_SRC;
-    void loadSayToMeWidgetScript(loaderUrl, hmrModuleUrl !== null)
+    void loadSayToMeWidgetScript(widgetUrl, hmrModuleUrl !== null)
       .then(() => waitForSayToMeWidgetV2(widget, CAPABILITY_TIMEOUT_MS))
       .then((isV2) => {
         if (disposed) return undefined;
@@ -181,6 +219,7 @@ export function SayToMeWidgetHost({
     sessionId,
     threadId,
     title,
+    widgetUrl,
   ]);
 
   return (
@@ -191,9 +230,12 @@ export function SayToMeWidgetHost({
         hidden: capability !== "ready",
       })}
       {capability === "unavailable" ? (
-        <div role="status" data-testid="say-to-me-widget-unavailable">
-          Say To Me is unavailable. Update Paseo to use the STM v2 widget.
-        </div>
+        <Alert
+          variant="warning"
+          title="Say To Me unavailable"
+          description={unavailableDescription}
+          testID="say-to-me-widget-unavailable"
+        />
       ) : null}
     </ThemedWidgetHostDiv>
   );
