@@ -73,7 +73,7 @@ import {
 import { useVoiceOptional } from "@/contexts/voice-context";
 import { useToast } from "@/contexts/toast-context";
 import { playSendDing } from "@/utils/send-ding";
-import { useIdleCompletionDing } from "@/utils/use-idle-completion-ding";
+import { useIdleCompletionDing } from "@/say-to-me/use-idle-completion-ding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";

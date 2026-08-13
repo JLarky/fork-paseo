@@ -22,3 +22,28 @@ The earlier same-origin proxy is intentionally not included. The daemon's
 exact origin allowlist now permits the browser's direct WebSocket connection,
 so a proxy would add a process and an internal Metro port without solving a
 remaining compatibility problem.
+
+## Boundaries
+
+Say To Me code lives under `packages/app/src/say-to-me/`. Existing Paseo
+files should contain only the smallest integration points needed to mount the
+widget and play its notification sounds:
+
+- `packages/app/src/panels/agent-panel.tsx` mounts `<SayToMeWidgetHost>`.
+- `packages/app/src/composer/index.tsx` calls `playSendDing()` on submit and
+  `useIdleCompletionDing()` to watch the active turn.
+
+`packages/app/src/utils/send-ding.*` predates this convention and still lives
+in `utils/`; new Say To Me sound/behavior files belong in `say-to-me/`
+instead. Do not move general Paseo utilities into `say-to-me/` or modify
+unrelated Paseo behavior for Say To Me features.
+
+## Rebase Workflow
+
+1. Start a new branch from the latest `origin/main`.
+2. Keep new Say To Me files inside `packages/app/src/say-to-me/`.
+3. Resolve conflicts in the small composer/agent-panel integration points
+   first.
+4. Run the focused tests and typecheck for changed files.
+5. Review `git diff origin/main` and confirm no unrelated Paseo files
+   changed.
