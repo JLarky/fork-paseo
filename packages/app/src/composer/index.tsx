@@ -73,6 +73,7 @@ import {
 import { useVoiceOptional } from "@/contexts/voice-context";
 import { useToast } from "@/contexts/toast-context";
 import { playSendDing } from "@/utils/send-ding";
+import { useIdleCompletionDing } from "@/say-to-me/use-idle-completion-ding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
@@ -1338,6 +1339,12 @@ export function Composer({
   const settleAgentCancellation = useSessionStore((state) => state.settleAgentCancellation);
   const isAgentRunning = hasActiveTurn;
   const hasAgent = agentState.status !== null;
+
+  useIdleCompletionDing({
+    threadKey: `${serverId}:${agentId}`,
+    isActive: hasActiveTurn,
+    isCancelling: isCancellingAgent,
+  });
 
   const queueWriter = useMemo<QueueWriter>(
     () => ({
