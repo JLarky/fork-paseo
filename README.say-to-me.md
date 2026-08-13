@@ -31,7 +31,8 @@ widget and play its notification sounds:
 
 - `packages/app/src/panels/agent-panel.tsx` mounts `<SayToMeWidgetHost>`.
 - `packages/app/src/composer/index.tsx` calls `playSendDing()` on submit and
-  `useIdleCompletionDing()` to watch the active turn.
+  `useIdleCompletionDing()` to send one `say-to-me-queue-idle` event per
+  finished daemon turn. The widget owns the chime.
 
 `packages/app/src/utils/send-ding.*` predates this convention and still lives
 in `utils/`; new Say To Me sound/behavior files belong in `say-to-me/`

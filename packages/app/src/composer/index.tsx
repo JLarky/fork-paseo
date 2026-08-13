@@ -1329,12 +1329,11 @@ export function Composer({
     onSubmitMessageRef.current = onSubmitMessage;
   }, [onSubmitMessage]);
 
-  const hasActiveTurn = useSessionStore(
-    (state) => selectAgentTurnPresentation(state.sessions[serverId], agentId).isActive,
+  const turnPresentation = useSessionStore(
+    useShallow((state) => selectAgentTurnPresentation(state.sessions[serverId], agentId)),
   );
-  const isCancellingAgent = useSessionStore(
-    (state) => selectAgentTurnPresentation(state.sessions[serverId], agentId).isCancelling,
-  );
+  const hasActiveTurn = turnPresentation.isActive;
+  const isCancellingAgent = turnPresentation.isCancelling;
   const beginAgentCancellation = useSessionStore((state) => state.beginAgentCancellation);
   const settleAgentCancellation = useSessionStore((state) => state.settleAgentCancellation);
   const isAgentRunning = hasActiveTurn;
@@ -1342,8 +1341,10 @@ export function Composer({
 
   useIdleCompletionDing({
     threadKey: `${serverId}:${agentId}`,
+    sessionId: `pa_${agentId}`,
     isActive: hasActiveTurn,
     isCancelling: isCancellingAgent,
+    turnId: turnPresentation.turnId,
   });
 
   const queueWriter = useMemo<QueueWriter>(

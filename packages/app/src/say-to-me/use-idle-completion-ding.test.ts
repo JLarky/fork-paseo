@@ -1,62 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldPlayIdleCompletionDing } from "./use-idle-completion-ding.web";
+import { reduceIdleWorkUnit } from "./queue-idle";
 
-describe("shouldPlayIdleCompletionDing", () => {
-  it("plays when the stop button turns back into the send button", () => {
+describe("idle completion ding host handoff", () => {
+  it("emits once when a remembered turn goes idle", () => {
     expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: true, isCancelling: false },
-        { threadKey: "a", isActive: false, isCancelling: false },
-      ),
-    ).toBe(true);
+      reduceIdleWorkUnit(
+        { threadKey: "a", isActive: true, isCancelling: false, turnId: "turn-1" },
+        { threadKey: "a", isActive: false, isCancelling: false, turnId: null },
+        "turn-1",
+      ).emit,
+    ).toBe("turn-1");
   });
 
-  it("stays silent on the first sample so opening an idle thread is quiet", () => {
+  it("does not emit for a cancelled turn", () => {
     expect(
-      shouldPlayIdleCompletionDing(null, { threadKey: "a", isActive: false, isCancelling: false }),
-    ).toBe(false);
-  });
-
-  it("stays silent when switching away from a running thread", () => {
-    expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: true, isCancelling: false },
-        { threadKey: "b", isActive: false, isCancelling: false },
-      ),
-    ).toBe(false);
-  });
-
-  it("stays silent while a turn keeps running or stays idle", () => {
-    expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: true, isCancelling: false },
-        { threadKey: "a", isActive: true, isCancelling: false },
-      ),
-    ).toBe(false);
-    expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: false, isCancelling: false },
-        { threadKey: "a", isActive: false, isCancelling: false },
-      ),
-    ).toBe(false);
-  });
-
-  it("stays silent when a turn starts", () => {
-    expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: false, isCancelling: false },
-        { threadKey: "a", isActive: true, isCancelling: false },
-      ),
-    ).toBe(false);
-  });
-
-  it("stays silent when a manual cancellation ends the run", () => {
-    expect(
-      shouldPlayIdleCompletionDing(
-        { threadKey: "a", isActive: true, isCancelling: true },
-        { threadKey: "a", isActive: false, isCancelling: false },
-      ),
-    ).toBe(false);
+      reduceIdleWorkUnit(
+        { threadKey: "a", isActive: true, isCancelling: true, turnId: "turn-1" },
+        { threadKey: "a", isActive: false, isCancelling: false, turnId: null },
+        "turn-1",
+      ).emit,
+    ).toBeNull();
   });
 });
