@@ -36,6 +36,25 @@ export const SAY_TO_ME_WIDGET_HOST_STYLE = {
   flexShrink: 0,
 } as const;
 
+export const SAY_TO_ME_WIDGET_EDGE_INSET = 8;
+
+const HOST = '[data-testid="say-to-me-widget-host"]';
+
+// STM's collapsed banner is `position: absolute` on this host. `:has()`
+// stretches the host to the pane so that anchor uses the right gutter, and
+// keeps the expanded host in the chat column — no React collapsed state.
+export function getSayToMeWidgetLayoutCss(input: {
+  readonly maxContentWidth: number;
+  readonly insetPx?: number;
+}): string {
+  const inset = input.insetPx ?? SAY_TO_ME_WIDGET_EDGE_INSET;
+  return [
+    `${HOST}{align-self:center;max-width:${input.maxContentWidth}px;margin-top:${inset}px}`,
+    `${HOST}:has(.stm-voice-widget--collapsed){align-self:stretch;max-width:none;margin-top:0}`,
+    `${HOST} .stm-voice-widget--collapsed{top:${inset}px;right:${inset}px}`,
+  ].join("");
+}
+
 export function getSayToMeWidgetAttributes(
   sessionId: string,
   uiBaseUrl = resolveSayToMeWidgetUiBaseUrl() ?? "",

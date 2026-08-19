@@ -7,6 +7,7 @@ import { MAX_CONTENT_WIDTH } from "@/constants/layout";
 import {
   assignParkSessionFromEvent,
   getSayToMeWidgetAttributes,
+  getSayToMeWidgetLayoutCss,
   insertSayToMeUsagePromptFromEvent,
   resolveMountedSayToMeWidget,
   resolveSayToMeWidgetHmrModuleUrl,
@@ -64,11 +65,6 @@ const WidgetHostDiv = forwardRef<HTMLDivElement, WidgetHostDivProps>(
     const hostStyle = useMemo(
       () => ({
         ...SAY_TO_ME_WIDGET_HOST_STYLE,
-        // Match the chat/composer column so the widget doesn't float detached
-        // from the thread on ultra-wide screens.
-        alignSelf: "center",
-        maxWidth: MAX_CONTENT_WIDTH,
-        marginTop: 8,
         marginBottom: 8,
         ...themeVariables,
       }),
@@ -77,6 +73,7 @@ const WidgetHostDiv = forwardRef<HTMLDivElement, WidgetHostDivProps>(
 
     return (
       <div ref={ref} data-testid="say-to-me-widget-host" style={hostStyle}>
+        <style>{getSayToMeWidgetLayoutCss({ maxContentWidth: MAX_CONTENT_WIDTH })}</style>
         {children}
       </div>
     );

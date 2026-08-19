@@ -5,6 +5,7 @@ import {
   assignParkSessionUrl,
   buildParkSessionUrl,
   getSayToMeWidgetAttributes,
+  getSayToMeWidgetLayoutCss,
   insertSayToMeUsagePromptFromEvent,
   resolveMountedSayToMeWidget,
   isSayToMeParkSessionDetail,
@@ -91,6 +92,12 @@ describe("Say To Me widget host adapter", () => {
       minWidth: 0,
       flexShrink: 0,
     });
+  });
+
+  it("lays out expanded and collapsed hosts with CSS :has()", () => {
+    expect(getSayToMeWidgetLayoutCss({ maxContentWidth: 820 })).toBe(
+      '[data-testid="say-to-me-widget-host"]{align-self:center;max-width:820px;margin-top:8px}[data-testid="say-to-me-widget-host"]:has(.stm-voice-widget--collapsed){align-self:stretch;max-width:none;margin-top:0}[data-testid="say-to-me-widget-host"] .stm-voice-widget--collapsed{top:8px;right:8px}',
+    );
   });
 
   it("accepts only STM's exact Park event for the mounted session", () => {
