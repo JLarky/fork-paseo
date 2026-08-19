@@ -7,7 +7,10 @@ import { MAX_CONTENT_WIDTH } from "@/constants/layout";
 import {
   assignParkSessionFromEvent,
   getSayToMeWidgetAttributes,
+  getSayToMeWidgetCollapsedInsetCss,
+  getSayToMeWidgetHostBoxStyle,
   insertSayToMeUsagePromptFromEvent,
+  readSayToMeWidgetCollapsedFromStorage,
   resolveMountedSayToMeWidget,
   resolveSayToMeWidgetHmrModuleUrl,
   SAY_TO_ME_WIDGET_SRC,
@@ -15,6 +18,7 @@ import {
   SAY_TO_ME_USAGE_PROMPT_EVENT,
   SAY_TO_ME_WIDGET_HOST_STYLE,
   SAY_TO_ME_WIDGET_TAG,
+  subscribeSayToMeWidgetCollapsed,
   waitForSayToMeWidgetV2,
 } from "./widget";
 import type { SayToMeWidgetHostProps } from "./SayToMeWidgetHost";
@@ -56,27 +60,25 @@ type WidgetThemeVariables = CSSProperties & {
 
 interface WidgetHostDivProps {
   readonly children: ReactNode;
+  readonly collapsed: boolean;
   readonly themeVariables?: WidgetThemeVariables;
 }
 
 const WidgetHostDiv = forwardRef<HTMLDivElement, WidgetHostDivProps>(
-  ({ children, themeVariables }, ref) => {
+  ({ children, collapsed, themeVariables }, ref) => {
     const hostStyle = useMemo(
       () => ({
         ...SAY_TO_ME_WIDGET_HOST_STYLE,
-        // Match the chat/composer column so the widget doesn't float detached
-        // from the thread on ultra-wide screens.
-        alignSelf: "center",
-        maxWidth: MAX_CONTENT_WIDTH,
-        marginTop: 8,
+        ...getSayToMeWidgetHostBoxStyle({ collapsed, maxContentWidth: MAX_CONTENT_WIDTH }),
         marginBottom: 8,
         ...themeVariables,
       }),
-      [themeVariables],
+      [collapsed, themeVariables],
     );
 
     return (
       <div ref={ref} data-testid="say-to-me-widget-host" style={hostStyle}>
+        <style>{getSayToMeWidgetCollapsedInsetCss()}</style>
         {children}
       </div>
     );
@@ -152,6 +154,7 @@ export function SayToMeWidgetHost({
   onInsertUsagePrompt,
 }: SayToMeWidgetHostProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const [collapsed, setCollapsed] = useState(readSayToMeWidgetCollapsedFromStorage);
   const [capability, setCapability] = useState<"loading" | "ready" | "unavailable">("loading");
   const hmrModuleUrl = resolveSayToMeWidgetHmrModuleUrl();
   const widgetUrl = hmrModuleUrl ?? SAY_TO_ME_WIDGET_SRC;
@@ -187,6 +190,7 @@ export function SayToMeWidgetHost({
     };
     node.addEventListener(SAY_TO_ME_PARK_SESSION_EVENT, onPark);
     node.addEventListener(SAY_TO_ME_USAGE_PROMPT_EVENT, onUsagePrompt);
+    const unsubscribeCollapsed = subscribeSayToMeWidgetCollapsed(widget, setCollapsed);
 
     void loadSayToMeWidgetScript(widgetUrl, hmrModuleUrl !== null)
       .then(() => waitForSayToMeWidgetV2(widget, CAPABILITY_TIMEOUT_MS))
@@ -206,6 +210,7 @@ export function SayToMeWidgetHost({
 
     return () => {
       disposed = true;
+      unsubscribeCollapsed();
       node.removeEventListener(SAY_TO_ME_PARK_SESSION_EVENT, onPark);
       node.removeEventListener(SAY_TO_ME_USAGE_PROMPT_EVENT, onUsagePrompt);
     };
@@ -223,7 +228,7 @@ export function SayToMeWidgetHost({
   ]);
 
   return (
-    <ThemedWidgetHostDiv ref={hostRef}>
+    <ThemedWidgetHostDiv ref={hostRef} collapsed={collapsed}>
       {createElement(SAY_TO_ME_WIDGET_TAG, {
         ...getSayToMeWidgetAttributes(sessionId),
         "data-testid": "say-to-me-widget-element",
