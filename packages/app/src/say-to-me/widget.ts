@@ -38,67 +38,21 @@ export const SAY_TO_ME_WIDGET_HOST_STYLE = {
 
 export const SAY_TO_ME_WIDGET_EDGE_INSET = 8;
 
-// STM's collapsed banner is `position: absolute` on this host. Stretch to the
-// pane so that anchor uses the right gutter; stay in the chat column when
-// expanded. Drop host top margin when collapsed so the banner inset is the
-// only top offset and can match right.
-export function getSayToMeWidgetHostBoxStyle(input: {
-  readonly collapsed: boolean;
+const HOST = '[data-testid="say-to-me-widget-host"]';
+
+// STM's collapsed banner is `position: absolute` on this host. `:has()`
+// stretches the host to the pane so that anchor uses the right gutter, and
+// keeps the expanded host in the chat column — no React collapsed state.
+export function getSayToMeWidgetLayoutCss(input: {
   readonly maxContentWidth: number;
-}): {
-  readonly alignSelf: "center" | "stretch";
-  readonly maxWidth: number | "none";
-  readonly marginTop: number;
-} {
-  if (input.collapsed) {
-    return { alignSelf: "stretch", maxWidth: "none", marginTop: 0 };
-  }
-  return {
-    alignSelf: "center",
-    maxWidth: input.maxContentWidth,
-    marginTop: SAY_TO_ME_WIDGET_EDGE_INSET,
-  };
-}
-
-export function getSayToMeWidgetCollapsedInsetCss(insetPx = SAY_TO_ME_WIDGET_EDGE_INSET): string {
-  return `[data-testid="say-to-me-widget-host"] .stm-voice-widget--collapsed{top:${insetPx}px;right:${insetPx}px}`;
-}
-
-export function isSayToMeWidgetCollapsed(root: ParentNode): boolean | null {
-  const section = root.querySelector("[data-collapsed]");
-  if (!section) return null;
-  return section.getAttribute("data-collapsed") === "true";
-}
-
-export function readSayToMeWidgetCollapsedFromStorage(
-  storage: Pick<Storage, "getItem"> = localStorage,
-  storageKey = SAY_TO_ME_WIDGET_STORAGE_KEY,
-): boolean {
-  return storage.getItem(storageKey) === "true";
-}
-
-export function subscribeSayToMeWidgetCollapsed(
-  root: ParentNode,
-  onChange: (collapsed: boolean) => void,
-): () => void {
-  const emit = () => {
-    const collapsed = isSayToMeWidgetCollapsed(root);
-    if (collapsed === null) return;
-    onChange(collapsed);
-  };
-  if (typeof MutationObserver === "undefined") {
-    emit();
-    return () => {};
-  }
-  const observer = new MutationObserver(emit);
-  observer.observe(root, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    attributeFilter: ["data-collapsed"],
-  });
-  emit();
-  return () => observer.disconnect();
+  readonly insetPx?: number;
+}): string {
+  const inset = input.insetPx ?? SAY_TO_ME_WIDGET_EDGE_INSET;
+  return [
+    `${HOST}{align-self:center;max-width:${input.maxContentWidth}px;margin-top:${inset}px}`,
+    `${HOST}:has(.stm-voice-widget--collapsed){align-self:stretch;max-width:none;margin-top:0}`,
+    `${HOST} .stm-voice-widget--collapsed{top:${inset}px;right:${inset}px}`,
+  ].join("");
 }
 
 export function getSayToMeWidgetAttributes(

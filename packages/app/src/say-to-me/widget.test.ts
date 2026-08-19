@@ -5,14 +5,9 @@ import {
   assignParkSessionUrl,
   buildParkSessionUrl,
   getSayToMeWidgetAttributes,
-  getSayToMeWidgetCollapsedInsetCss,
-  getSayToMeWidgetHostBoxStyle,
+  getSayToMeWidgetLayoutCss,
   insertSayToMeUsagePromptFromEvent,
-  SAY_TO_ME_WIDGET_EDGE_INSET,
-  isSayToMeWidgetCollapsed,
-  readSayToMeWidgetCollapsedFromStorage,
   resolveMountedSayToMeWidget,
-  subscribeSayToMeWidgetCollapsed,
   isSayToMeParkSessionDetail,
   isSayToMeParkSessionEvent,
   resolveSayToMeWidgetHmrModuleUrl,
@@ -28,12 +23,6 @@ import {
   SAY_TO_ME_WIDGET_TAG,
 } from "./widget";
 import { resolveSayToMeWidgetUiBaseUrl } from "./sayToMeUi";
-
-function parentWithCollapsed(value: string | null): ParentNode {
-  return {
-    querySelector: () => (value === null ? null : { getAttribute: () => value }),
-  } as unknown as ParentNode;
-}
 
 describe("Say To Me widget host adapter", () => {
   afterEach(() => {
@@ -105,49 +94,10 @@ describe("Say To Me widget host adapter", () => {
     });
   });
 
-  it("keeps the expanded host in the chat column and stretches collapsed to the pane", () => {
-    expect(getSayToMeWidgetHostBoxStyle({ collapsed: false, maxContentWidth: 820 })).toEqual({
-      alignSelf: "center",
-      maxWidth: 820,
-      marginTop: SAY_TO_ME_WIDGET_EDGE_INSET,
-    });
-    expect(getSayToMeWidgetHostBoxStyle({ collapsed: true, maxContentWidth: 820 })).toEqual({
-      alignSelf: "stretch",
-      maxWidth: "none",
-      marginTop: 0,
-    });
-  });
-
-  it("uses the same collapsed top and right inset", () => {
-    expect(SAY_TO_ME_WIDGET_EDGE_INSET).toBe(8);
-    expect(getSayToMeWidgetCollapsedInsetCss()).toBe(
-      '[data-testid="say-to-me-widget-host"] .stm-voice-widget--collapsed{top:8px;right:8px}',
+  it("lays out expanded and collapsed hosts with CSS :has()", () => {
+    expect(getSayToMeWidgetLayoutCss({ maxContentWidth: 820 })).toBe(
+      '[data-testid="say-to-me-widget-host"]{align-self:center;max-width:820px;margin-top:8px}[data-testid="say-to-me-widget-host"]:has(.stm-voice-widget--collapsed){align-self:stretch;max-width:none;margin-top:0}[data-testid="say-to-me-widget-host"] .stm-voice-widget--collapsed{top:8px;right:8px}',
     );
-  });
-
-  it("reads STM collapsed state from the banner attribute and storage", () => {
-    expect(isSayToMeWidgetCollapsed(parentWithCollapsed(null))).toBeNull();
-    expect(isSayToMeWidgetCollapsed(parentWithCollapsed("false"))).toBe(false);
-    expect(isSayToMeWidgetCollapsed(parentWithCollapsed("true"))).toBe(true);
-    expect(
-      readSayToMeWidgetCollapsedFromStorage({
-        getItem: (key) => (key === SAY_TO_ME_WIDGET_STORAGE_KEY ? "true" : null),
-      }),
-    ).toBe(true);
-    expect(readSayToMeWidgetCollapsedFromStorage({ getItem: () => null })).toBe(false);
-  });
-
-  it("emits the current STM collapsed state as soon as the host subscribes", () => {
-    const seen: boolean[] = [];
-    const unsubscribe = subscribeSayToMeWidgetCollapsed(
-      parentWithCollapsed("true"),
-      (collapsed) => {
-        seen.push(collapsed);
-      },
-    );
-
-    expect(seen).toEqual([true]);
-    unsubscribe();
   });
 
   it("accepts only STM's exact Park event for the mounted session", () => {
